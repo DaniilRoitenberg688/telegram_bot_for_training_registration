@@ -1,0 +1,7 @@
+/target
+.env
+TODO.txt
+*.db
+*.sqlite
+.idea
+.vscode
