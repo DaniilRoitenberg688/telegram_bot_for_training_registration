@@ -23,3 +23,11 @@ pub struct Training {
     pub capacity: u32,
     pub enabled: bool
 }
+
+
+#[derive(Debug, Clone, FromRow, Default)]
+pub struct Registration {
+    pub id: Uuid,
+    pub user_id: String,
+    pub training_id: Uuid,
+}

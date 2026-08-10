@@ -1,5 +1,4 @@
-use chrono::NaiveDate;
-use serde::{Deserialize, Serialize};
+use crate::models::Training;
 
 #[derive(Default, Debug, Clone)]
 pub enum State {
@@ -8,5 +7,7 @@ pub enum State {
     Register,
 
     ChooseWeek,
-    ChooseDay
+    ChooseDay ,
+    ChooseTime,
+    ConfirmRegistration {training: Training}
 }

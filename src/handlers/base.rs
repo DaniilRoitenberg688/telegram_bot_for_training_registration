@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::commands::Command;
 use crate::models::User;
+use crate::service::errors::ServiceError;
 use crate::service::user::UserService;
 use crate::states::State;
 use crate::types::{MyResult, MyDialogue};
@@ -96,7 +97,15 @@ pub async fn get_name(
                 bot.send_message(msg.chat.id, "Регистрация прошла успешно!").reply_markup(user_reply_keyboard())
                     .await?;
             }
-            _ => {
+            Err(ServiceError::NotFound) => {
+                bot.send_message(
+                    msg.chat.id,
+                    "Произошла ошибка при регистрации. У вас уже есть аккаунт",
+                )
+                .await?;
+            }
+            Err(e) => {
+                eprintln!("{:?}", e);
                 bot.send_message(
                     msg.chat.id,
                     "Произошла ошибка при регистрации. Повторите позже",

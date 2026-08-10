@@ -1,4 +1,5 @@
 use anyhow::Context;
+use chrono::NaiveDate;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
@@ -39,7 +40,7 @@ impl TrainingRepo {
         from: Option<chrono::NaiveDate>,
         to: Option<chrono::NaiveDate>,
         repeats: bool,
-    ) -> anyhow::Result<Vec<Training>> {
+    ) -> Result<Vec<Training>, sqlx::Error> {
         let mut sql = "select * from trainings where ($1 is NULL or date >= $1) and ($2 is NULL or date <= $2)";
         if !repeats {
             sql = "select id, date, start_time, end_time, capacity, enabled from trainings 
@@ -49,10 +50,17 @@ impl TrainingRepo {
         let trainings = sqlx::query_as::<_, Training>(sql)
             .bind(from)
             .bind(to)
-            .fetch_all(&self.db).await?;
+            .fetch_all(&self.db)
+            .await?;
         Ok(trainings)
+    }
 
-
+    pub async fn get_by_date(&self, date: NaiveDate) -> Result<Vec<Training>, sqlx::Error> {
+        let training = sqlx::query_as::<_, Training>("select * from trainings where date = $1")
+            .bind(date)
+            .fetch_all(&self.db)
+            .await?;
+        Ok(training)
 
     }
 }

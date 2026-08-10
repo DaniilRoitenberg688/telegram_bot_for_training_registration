@@ -20,6 +20,8 @@ use teloxide::{
     types::Update,
 };
 
+use crate::handlers::user::{callback_handler_choose_day, callback_handler_choose_time, callback_handler_confirm_registration};
+use crate::repo::registration::RegistrationRepo;
 use crate::{
     handlers::user::callback_handler_choose_week,
     repo::{training::TrainingRepo, user::UserRepo},
@@ -30,10 +32,11 @@ use crate::{
 pub async fn run() -> MyResult<()> {
     let config = Config::build();
     let pool = sqlx::SqlitePool::connect(&config.database_url).await?;
+    let registration_repo = RegistrationRepo::new(pool.clone());
     let user_repo = UserRepo::new(pool.clone());
     let user_service = Arc::new(UserService::new(user_repo));
     let training_repo = TrainingRepo::new(pool);
-    let training_service = Arc::new(TrainingService::new(training_repo));
+    let training_service = Arc::new(TrainingService::new(training_repo, registration_repo));
     training_service.every_day_create().await?;
     let bot = Bot::new(config.token);
     let trainer_ids = Arc::new(config.trainer_ids);
@@ -65,7 +68,10 @@ pub fn handler() -> UpdateHandler<Box<dyn Error + Sync + Send>> {
 
     let callback_handler = Update::filter_callback_query()
         .enter_dialogue::<CallbackQuery, InMemStorage<State>, State>()
-        .branch(case![State::ChooseWeek].endpoint(callback_handler_choose_week));
+        .branch(case![State::ChooseWeek].endpoint(callback_handler_choose_week))
+        .branch(case![State::ChooseDay].endpoint(callback_handler_choose_day))
+        .branch(case![State::ChooseTime].endpoint(callback_handler_choose_time))
+        .branch(case![State::ConfirmRegistration {training}].endpoint(callback_handler_confirm_registration));
 
     dptree::entry()
         .branch(message_handler)
