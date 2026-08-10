@@ -31,3 +31,9 @@ pub struct Registration {
     pub user_id: String,
     pub training_id: Uuid,
 }
+
+#[derive(Debug, Clone, FromRow, Default)]
+pub struct Notification {
+    pub id: Uuid,
+    pub date: NaiveDate
+}

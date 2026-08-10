@@ -19,4 +19,15 @@ impl UserService {
         Ok(())
     }
 
+    pub async fn get_simple_users(&self) -> Vec<User> {
+        let users = match self.repo.get_all_users(Some(false)).await {
+            Ok(u) => u,
+            Err(e) => {
+                eprintln!("cannot get users {}", e);
+                Vec::new()
+            }
+        };
+        users
+    }
+
 }

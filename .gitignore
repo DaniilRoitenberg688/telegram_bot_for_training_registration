@@ -5,3 +5,5 @@ TODO.txt
 *.sqlite
 .idea
 .vscode
+*-shm
+*-wal

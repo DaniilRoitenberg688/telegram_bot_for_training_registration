@@ -35,4 +35,11 @@ impl UserRepo {
         Ok(user)
 
     }
+
+    pub async fn get_all_users(&self, is_trainer: Option<bool>) -> Result<Vec<User>, sqlx::Error> {
+        let users = sqlx::query_as::<_, User>("select * from users where ($1 is NULL or is_trainer = $1)")
+            .bind(is_trainer)
+            .fetch_all(&self.db).await?;
+        Ok(users)
+    }
 }
