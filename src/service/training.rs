@@ -1,31 +1,45 @@
 use chrono::{Duration, NaiveDate, NaiveTime, Utc};
 use uuid::Uuid;
 
-use crate::{models::{Registration, Training}, repo::{registration::RegistrationRepo, training::TrainingRepo}, service::errors::ServiceError, types::MyResult};
+use crate::{
+    models::{Registration, Training},
+    repo::{registration::RegistrationRepo, training::TrainingRepo},
+    service::errors::ServiceError,
+    types::MyResult,
+};
 
 pub struct TrainingService {
     repo: TrainingRepo,
-    registration_repo: RegistrationRepo
+    registration_repo: RegistrationRepo,
 }
 
 impl TrainingService {
     pub fn new(repo: TrainingRepo, registration_repo: RegistrationRepo) -> Self {
-        TrainingService { repo, registration_repo }
+        TrainingService {
+            repo,
+            registration_repo,
+        }
     }
 
     pub async fn get(&self, id: Uuid) -> Option<Training> {
         match self.repo.get_by_id(id).await {
             Ok(t) => Some(t),
-            Err(err) => {eprintln!("{}", err); None}
+            Err(err) => {
+                eprintln!("{}", err);
+                None
+            }
         }
     }
 
     pub async fn every_day_create(&self) -> Result<(), ServiceError> {
-        let trainings = self.repo.get_between_dates(Some(Utc::now().date_naive()), None, false).await?;
+        let trainings = self
+            .repo
+            .get_between_dates(Some(Utc::now().date_naive()), None, false)
+            .await?;
         println!("{:?}", trainings.len());
         let (start, days, last_day) = match trainings.last() {
             Some(t) => (1, 30 - trainings.len(), t.date),
-            _ => (0, 30, Utc::now().date_naive())
+            _ => (0, 30, Utc::now().date_naive()),
         };
         for i in start..days {
             let date = last_day + Duration::days(i as i64);
@@ -38,7 +52,7 @@ impl TrainingService {
                     start_time,
                     end_time,
                     capacity: 1,
-                    enabled: true
+                    enabled: true,
                 };
                 self.repo.create(training).await?;
             }
@@ -47,7 +61,11 @@ impl TrainingService {
     }
 
     pub async fn get_week_traings(&self, from: NaiveDate, to: NaiveDate) -> Vec<Training> {
-        match self.repo.get_between_dates(Some(from), Some(to), false).await {
+        match self
+            .repo
+            .get_between_dates(Some(from), Some(to), false)
+            .await
+        {
             Ok(t) => t,
             Err(err) => {
                 eprintln!("{err}");
@@ -57,21 +75,53 @@ impl TrainingService {
     }
 
     pub async fn get_training_by_date(&self, date: NaiveDate) -> Vec<Training> {
-        match self.repo.get_by_date(date).await {
+        match self.repo.get_by_date_without_registration(date).await {
             Ok(t) => t,
-            Err(e) => {eprintln!("cannot get trainings by date: {}", e); Vec::new()}
+            Err(e) => {
+                eprintln!("cannot get trainings by date: {}", e);
+                Vec::new()
+            }
         }
     }
 
-
-    pub async fn register_to_training(&self, user_id: String, training_id: Uuid) -> Result<(), ServiceError> {
+    pub async fn register_to_training(
+        &self,
+        user_id: String,
+        training_id: Uuid,
+    ) -> Result<(), ServiceError> {
         let _training = self.repo.get_by_id(training_id).await?;
         let registration = Registration {
             id: Uuid::new_v4(),
-            user_id, 
-            training_id
+            user_id,
+            training_id,
         };
         self.registration_repo.create(registration).await?;
+        Ok(())
+    }
+
+    pub async fn get_registered_trainings_for_user(&self, user_id: String) -> Vec<Training> {
+        let mut trainings = self
+            .repo
+            .get_registered_trainings_for_user(user_id)
+            .await
+            .unwrap_or_else(|e| {
+                eprintln!("cannot get trainings for user: {e}");
+                Vec::new()
+            });
+        let now = Utc::now();
+        trainings.retain(|t| {
+            t.date > now.date_naive() || (t.end_time > now.time() && t.date == now.date_naive())
+        });
+        trainings.sort_by(|a, b| {
+            a.date
+                .cmp(&b.date)
+                .then_with(|| a.start_time.cmp(&b.start_time))
+        });
+        trainings
+    }
+
+    pub async fn cancel_training(&self, training_id: Uuid, user_id: String) -> Result<(), ServiceError> {
+        self.registration_repo.delete(user_id, training_id).await?;
         Ok(())
     }
 

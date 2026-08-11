@@ -1,7 +1,7 @@
-use std::{str::FromStr, sync::Arc};
-
 use ::chrono::{Datelike, Duration, NaiveDate};
-use chrono::Utc;
+use std::fmt::Write;
+use std::{str::FromStr, sync::Arc};
+use teloxide::types::ParseMode;
 use teloxide::{
     Bot,
     payloads::{EditMessageReplyMarkupSetters, SendMessageSetters},
@@ -10,10 +10,11 @@ use teloxide::{
 };
 use uuid::Uuid;
 
+use crate::keyboards::*;
 use crate::{
     keyboards::{
         TRAINER_REPLY_KEYBOARD_EDIT_TEXT, TRAINER_REPLY_KEYBOARD_SHOW_TEXT,
-        USER_REPLY_KEYBOARD_TEXT,
+        USER_GET_TRAININGS_REPLY_KEYBOARD_TEXT, USER_REPLY_KEYBOARD_TEXT,
     },
     models::Training,
     service::{training::TrainingService, user::UserService},
@@ -26,6 +27,7 @@ pub async fn handle_user_text(
     msg: Message,
     dialogue: MyDialogue,
     _user_service: Arc<UserService>,
+    training_serivce: Arc<TrainingService>,
     trainer_ids: Arc<Vec<String>>,
 ) -> MyResult<()> {
     let user_id = msg.chat.id.to_string();
@@ -33,9 +35,38 @@ pub async fn handle_user_text(
         match text {
             USER_REPLY_KEYBOARD_TEXT => {
                 dialogue.update(State::ChooseWeek).await?;
-                bot.send_message(msg.chat.id, "Выберете неделю:")
+                bot.send_message(msg.chat.id, "Выберите неделю:")
                     .reply_markup(generate_week_inline_keyboard())
                     .await?;
+            }
+            USER_GET_TRAININGS_REPLY_KEYBOARD_TEXT => {
+                println!("{}", msg.chat.id.to_string());
+                let user_trainings = training_serivce
+                    .get_registered_trainings_for_user(msg.chat.id.to_string())
+                    .await;
+                println!("{:?}", user_trainings);
+                if user_trainings.is_empty() {
+                    bot.send_message(msg.chat.id, "У вас пока нет записей")
+                        .await?;
+                } else {
+                    let mut message = String::from("<b>Ваши записи:</b>\n\n");
+                    for training in user_trainings {
+                        let _ = write!(
+                            message,
+                            "{}, {}:\n  {} 🥊 \n\n",
+                            weekday_ru(training.date),
+                            training.date.format("%d.%m"),
+                            training.start_time.format("%H:%M")
+                        );
+                    }
+                    bot.send_message(msg.chat.id, message)
+                        .reply_markup(InlineKeyboardMarkup::new(vec![vec![
+                            InlineKeyboardButton::callback("❌ Отменить запись", "otm"),
+                        ]]))
+                        .parse_mode(ParseMode::Html)
+                        .await?;
+                    dialogue.update(State::ShowTrainings).await?;
+                }
             }
             TRAINER_REPLY_KEYBOARD_SHOW_TEXT if trainer_ids.contains(&user_id) => {
                 bot.send_message(msg.chat.id, "Данная функция еще не работает")
@@ -137,7 +168,9 @@ pub async fn callback_handler_choose_time(
                         .reply_markup(generate_confirm_registration_inline_keyboard())
                         .await?;
 
-                    dialogue.update(State::ConfirmRegistration {training: t}).await?;
+                    dialogue
+                        .update(State::ConfirmRegistration { training: t })
+                        .await?;
                 }
                 None => {
                     bot.edit_message_text(m.chat().id, m.id(), "Извините, что-то пошло не так")
@@ -153,23 +186,22 @@ pub async fn callback_handler_choose_time(
     Ok(())
 }
 
-
-
-
-pub async fn callback_handler_confirm_registration (
+pub async fn callback_handler_confirm_registration(
     bot: Bot,
     q: CallbackQuery,
     dialogue: MyDialogue,
     training_serivce: Arc<TrainingService>,
-    training: Training
+    training: Training,
 ) -> MyResult<()> {
-
-    let CallbackQuery { data, message,  .. } = q;
+    let CallbackQuery { data, message, .. } = q;
     if let Some(m) = message {
         if let Some(d) = data {
             let training_id = training.id;
             let user_id = m.chat().id.to_string();
-            match training_serivce.register_to_training(user_id, training_id).await {
+            match training_serivce
+                .register_to_training(user_id, training_id)
+                .await
+            {
                 Err(e) => eprintln!("{:?}", e),
                 _ => {}
             };
@@ -181,70 +213,106 @@ pub async fn callback_handler_confirm_registration (
                 .await?;
             dialogue.update(State::Default).await?;
         }
+    }
+    Ok(())
+}
 
+pub async fn callback_handler_choose_training_to_cancel(
+    bot: Bot,
+    q: CallbackQuery,
+    dialogue: MyDialogue,
+    training_serivce: Arc<TrainingService>,
+) -> MyResult<()> {
+    let CallbackQuery { message, .. } = q;
+    if let Some(m) = message {
+        let user_trainings = training_serivce
+            .get_registered_trainings_for_user(m.chat().id.to_string())
+            .await;
+        bot.edit_message_text(
+            m.chat().id,
+            m.id(),
+            "❌ Выберите тренировку для отмены записи:",
+        )
+        .await?;
+        bot.edit_message_reply_markup(m.chat().id, m.id())
+            .reply_markup(generate_cancel_training_keyboard(user_trainings))
+            .await?;
+        dialogue.update(State::ChooseCancelTraining).await?;
+    }
+    Ok(())
+}
+
+pub async fn callback_confirm_cancel_training(
+    bot: Bot,
+    q: CallbackQuery,
+    dialogue: MyDialogue,
+    training_service: Arc<TrainingService>,
+) -> MyResult<()> {
+    let CallbackQuery { data, message, .. } = q;
+    if let Some(msg) = message {
+        if let Some(d) = data {
+            let id = Uuid::from_str(&d).unwrap();
+            match training_service.get(id).await {
+                Some(training) => {
+                    bot.edit_message_text(
+                        msg.chat().id,
+                        msg.id(),
+                        format!(
+                            "Вы точно хотите отменить эту тренировку: {}, {} — {}",
+                            weekday_ru(training.date),
+                            training.date.format("%d.%m"),
+                            training.start_time.format("%H:%M")
+                        ),
+                    )
+                    .await?;
+                    bot.edit_message_reply_markup(msg.chat().id, msg.id())
+                        .reply_markup(InlineKeyboardMarkup::new(vec![vec![InlineKeyboardButton::callback("❌ Отменить", "cancel")]])).await?;
+                    dialogue.update(State::ConfirmCancelTraining { training }).await?;
+                }
+                None => {
+                    bot.edit_message_text(
+                        msg.chat().id,
+                        msg.id(),
+                        "Не могу найти такую тренировку",
+                    )
+                    .await?;
+                    dialogue.update(State::Default).await?;
+                }
+            }
+        }
     }
     Ok(())
 }
 
 
-pub fn generate_confirm_registration_inline_keyboard() -> InlineKeyboardMarkup {
-    let b = InlineKeyboardButton::callback("✅ Да", "hi");
-    InlineKeyboardMarkup::new(vec![vec![b]])
+pub async fn callback_cancel_training(
+    bot: Bot,
+    q: CallbackQuery,
+    training: Training,
+    dialogue: MyDialogue,
+    training_serivce: Arc<TrainingService>,
+) -> MyResult<()> {
+    let CallbackQuery { message, .. } = q;
+    if let Some(m) = message {
+        match training_serivce.cancel_training(training.id, m.chat().id.to_string()).await {
+            Ok(_) => {
+                bot.edit_message_text(
+                    m.chat().id,
+                    m.id(),
+                    "Запись успешно отменена!",
+                ).await?;
+            },
+            Err(e) => {
+                bot.edit_message_text(
+                    m.chat().id,
+                    m.id(),
+                    "Извините, что-то пошло не так, запись отменить не удалось",
+                ).await?;
+                eprint!("cannot cancel training: {e}");
 
-}
-
-pub fn generate_time_inline_keyboard(trainings: Vec<Training>) -> InlineKeyboardMarkup {
-    let mut time: Vec<Vec<InlineKeyboardButton>> = Vec::new();
-    for i in (0..=trainings.len()).step_by(2) {
-        let f = trainings.get(i);
-        let s = trainings.get(i + 1);
-        let mut line: Vec<InlineKeyboardButton> = Vec::new();
-        if let Some(t) = f {
-            let k = InlineKeyboardButton::callback(
-                t.start_time.format("%H:%M").to_string(),
-                t.id.to_string(),
-            );
-            line.push(k);
+            }
         }
-        if let Some(t) = s {
-            let k = InlineKeyboardButton::callback(
-                t.start_time.format("%H:%M").to_string(),
-                t.id.to_string(),
-            );
-            line.push(k);
-        }
-        time.push(line);
+        dialogue.update(State::Default).await?;
     }
-
-    InlineKeyboardMarkup::new(time)
-}
-
-pub fn generate_days_inline_keyboard(trainings: Vec<Training>) -> InlineKeyboardMarkup {
-    let mut days: Vec<Vec<InlineKeyboardButton>> = Vec::new();
-    for t in trainings.iter() {
-        let button =
-            InlineKeyboardButton::callback(t.date.format("%d.%m").to_string(), t.date.to_string());
-        days.push(vec![button]);
-    }
-    InlineKeyboardMarkup::new(days)
-}
-
-pub fn generate_week_inline_keyboard() -> InlineKeyboardMarkup {
-    let today = Utc::now().date_naive();
-    let monday = today - Duration::days(today.weekday().num_days_from_monday() as i64);
-    let mut weeks: Vec<Vec<InlineKeyboardButton>> = Vec::new();
-    for i in 0..4 {
-        let new_monday = monday + Duration::days(i * 7);
-        let sunday = monday + Duration::days(i * 7 + 6);
-        let week = format!(
-            "{} — {}",
-            new_monday.format("%d.%m"),
-            sunday.format("%d.%m")
-        );
-        weeks.push(vec![InlineKeyboardButton::callback(
-            &week,
-            new_monday.to_string(),
-        )]);
-    }
-    InlineKeyboardMarkup::new(weeks)
+    Ok(())
 }

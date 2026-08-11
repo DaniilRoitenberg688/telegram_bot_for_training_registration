@@ -1,4 +1,5 @@
 use sqlx::SqlitePool;
+use uuid::Uuid;
 
 use crate::models::Registration;
 
@@ -20,4 +21,14 @@ impl RegistrationRepo {
             .await?;
         Ok(())
     }
+
+    pub async fn delete(&self, user_id: String, training_id: Uuid) -> Result<(), sqlx::Error> {
+        sqlx::query("delete from registrations where user_id = $1 and training_id = $2")
+            .bind(user_id)
+            .bind(training_id)
+            .execute(&self.db).await?;
+        Ok(())
+
+    }
+
 }
