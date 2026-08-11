@@ -13,7 +13,11 @@ pub enum State {
 
     ShowTrainings,
     ChooseCancelTraining,
-    ConfirmCancelTraining {training: Training}
+    ConfirmCancelTraining {training: Training},
+
+    AdminChooseWeek,
+    AdminChooseDay,
+    AdminShowTrainings,
 }
 
 

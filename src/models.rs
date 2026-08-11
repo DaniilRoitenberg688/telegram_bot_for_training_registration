@@ -37,3 +37,12 @@ pub struct Notification {
     pub id: Uuid,
     pub date: NaiveDate
 }
+
+#[derive(Debug, Clone, FromRow)]
+pub struct RegistrationFullInfo {
+    pub date: NaiveDate,
+    pub start_time: NaiveTime,
+    pub end_time: NaiveTime,
+    pub full_name: String,
+    pub username: String,
+}

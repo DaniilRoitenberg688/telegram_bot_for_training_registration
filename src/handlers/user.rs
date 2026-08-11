@@ -36,7 +36,7 @@ pub async fn handle_user_text(
             USER_REPLY_KEYBOARD_TEXT => {
                 dialogue.update(State::ChooseWeek).await?;
                 bot.send_message(msg.chat.id, "Выберите неделю:")
-                    .reply_markup(generate_week_inline_keyboard())
+                    .reply_markup(generate_week_inline_keyboard(get_weeks()))
                     .await?;
             }
             USER_GET_TRAININGS_REPLY_KEYBOARD_TEXT => {
@@ -53,7 +53,7 @@ pub async fn handle_user_text(
                     for training in user_trainings {
                         let _ = write!(
                             message,
-                            "{}, {}:\n  {} 🥊 \n\n",
+                            "🥊 {}, {} — {} \n\n",
                             weekday_ru(training.date),
                             training.date.format("%d.%m"),
                             training.start_time.format("%H:%M")
@@ -69,7 +69,9 @@ pub async fn handle_user_text(
                 }
             }
             TRAINER_REPLY_KEYBOARD_SHOW_TEXT if trainer_ids.contains(&user_id) => {
-                bot.send_message(msg.chat.id, "Данная функция еще не работает")
+                dialogue.update(State::AdminChooseWeek).await?;
+                bot.send_message(msg.chat.id, "Выберите неделю:")
+                    .reply_markup(generate_week_inline_keyboard(training_serivce.get_weeks_with_trainings(get_weeks()).await))
                     .await?;
             }
             TRAINER_REPLY_KEYBOARD_EDIT_TEXT if trainer_ids.contains(&user_id) => {
@@ -316,3 +318,6 @@ pub async fn callback_cancel_training(
     }
     Ok(())
 }
+
+
+

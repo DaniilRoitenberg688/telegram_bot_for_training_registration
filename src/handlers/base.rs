@@ -1,7 +1,6 @@
-use std::sync::Arc;
-
 use crate::commands::Command;
 use crate::handlers::user::callback_handler_choose_week;
+use crate::keyboards::*;
 use crate::keyboards::{trainer_reply_keyboard, user_reply_keyboard};
 use crate::models::User;
 use crate::service::errors::ServiceError;
@@ -9,6 +8,7 @@ use crate::service::training::TrainingService;
 use crate::service::user::UserService;
 use crate::states::State;
 use crate::types::{MyDialogue, MyResult};
+use std::sync::Arc;
 use teloxide::prelude::*;
 use teloxide::types::CallbackQuery;
 
@@ -122,23 +122,33 @@ pub async fn get_name(
     Ok(())
 }
 
-pub async fn callback_handler_back(bot: Bot, q: CallbackQuery, dialogue: MyDialogue, training_serivce: Arc<TrainingService>) -> MyResult<()> {
-    let CallbackQuery { data, .. } = q.clone();
-    if let Some(d) = data {
-        if let Some(state) = d.strip_prefix("back:") {
-            let s: State = state.into();
-            dialogue.update(state).await?;
-            match s {
-                State::ChooseWeek => {
-                    println!("adfasdf");
-                    callback_handler_choose_week(bot, q, dialogue, training_serivce).await?;
-                },
-                State::ChooseDay => {
-                    callback_handler_choose_week(bot, q, dialogue, training_serivce).await?;
-                }
-                _ => {}
-            }
-        }
-    }
-    Ok(())
-}
+// pub async fn callback_handler_back(
+//     bot: Bot,
+//     q: CallbackQuery,
+//     dialogue: MyDialogue,
+//     trainer_ids: Arc<Vec<String>>
+// ) -> MyResult<()> {
+//     let CallbackQuery { data, message, .. } = q.clone();
+//     if let Some(msg) = message {
+//         if let Some(d) = data {
+//             if let Some(state) = d.strip_prefix("back:") {
+//                 let s: State = state.into();
+//                 dialogue.update(state).await?;
+//                 match s {
+//                     State::Default => {
+//                         if trainer_ids.contains(&msg.chat().id.to_string()) {
+//                             dialogue.update(State::ChooseWeek).await?;
+//                         }
+//                         dialogue.update(State::ChooseWeek).await?;
+//                         bot.edit_message_text(msg.chat().id, msg.id(), "Выберите неделю:").await?;
+//                         bot.edit_message_reply_markup(msg.chat().id, msg.id())
+//                             .reply_markup(generate_week_inline_keyboard())
+//                             .await?;
+//                     }
+//                     _ => {}
+//                 }
+//             }
+//         }
+//     }
+//     Ok(())
+// }

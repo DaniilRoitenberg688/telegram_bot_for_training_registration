@@ -1,9 +1,8 @@
-use anyhow::Context;
 use chrono::NaiveDate;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
-use crate::models::Training;
+use crate::models::{RegistrationFullInfo, Training};
 
 pub struct TrainingRepo {
     db: SqlitePool,
@@ -63,7 +62,10 @@ impl TrainingRepo {
         Ok(training)
     }
 
-    pub async fn get_by_date_without_registration(&self, date: NaiveDate) -> Result<Vec<Training>, sqlx::Error> {
+    pub async fn get_by_date_without_registration(
+        &self,
+        date: NaiveDate,
+    ) -> Result<Vec<Training>, sqlx::Error> {
         let training = sqlx::query_as::<_, Training>("select trainings.id as id, date, start_time, end_time, capacity, enabled from trainings
                                                         left join registrations on trainings.id = training_id
                                                         where registrations.id is NULL and date = $1")
@@ -73,12 +75,41 @@ impl TrainingRepo {
         Ok(training)
     }
 
-    pub async fn get_registered_trainings_for_user(&self, user_id: String) -> Result<Vec<Training>, sqlx::Error> {
+    pub async fn get_registered_trainings_for_user(
+        &self,
+        user_id: String,
+    ) -> Result<Vec<Training>, sqlx::Error> {
         let trainings = sqlx::query_as::<_, Training>("select trainings.id as id, date, start_time, end_time, capacity, enabled from registrations 
                                                         join trainings on trainings.id = registrations.training_id 
                                                         where user_id = $1")
             .bind(user_id)
             .fetch_all(&self.db).await?;
+        Ok(trainings)
+    }
+
+    pub async fn get_trainings_with_registration(&self) -> Result<Vec<Training>, sqlx::Error> {
+        let training = sqlx::query_as::<_, Training>("select trainings.id as id, date, start_time, end_time, capacity, enabled from trainings
+                                                        left join registrations on trainings.id = training_id
+                                                        where registrations.id is not NULL
+                                                        group by date")
+            .fetch_all(&self.db)
+            .await?;
+        Ok(training)
+    }
+
+    pub async fn get_trainings_with_registration_by_date(
+        &self,
+        date: NaiveDate,
+    ) -> Result<Vec<RegistrationFullInfo>, sqlx::Error> {
+        let trainings = sqlx::query_as::<_, RegistrationFullInfo>(
+            "select date, start_time, end_time, full_name, username from trainings
+            left join registrations on trainings.id = training_id
+            join users on users.id = user_id
+            where registrations.id is not NULL and date = $1",
+        )
+        .bind(date)
+        .fetch_all(&self.db)
+        .await?;
         Ok(trainings)
     }
 }

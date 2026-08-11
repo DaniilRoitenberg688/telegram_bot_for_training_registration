@@ -38,14 +38,13 @@ pub fn user_reply_keyboard() -> KeyboardMarkup {
 pub fn trainer_reply_keyboard() -> KeyboardMarkup {
     KeyboardMarkup::new(vec![vec![
         KeyboardButton::new(TRAINER_REPLY_KEYBOARD_SHOW_TEXT),
-        KeyboardButton::new(TRAINER_REPLY_KEYBOARD_EDIT_TEXT),
     ]])
     .resize_keyboard()
 }
 
 pub fn generate_confirm_registration_inline_keyboard() -> InlineKeyboardMarkup {
     let b = InlineKeyboardButton::callback("✅ Да", "hi");
-    InlineKeyboardMarkup::new(vec![vec![b]])
+    InlineKeyboardMarkup::new(vec![ vec![b]])
 }
 
 pub fn generate_time_inline_keyboard(trainings: Vec<Training>) -> InlineKeyboardMarkup {
@@ -84,24 +83,35 @@ pub fn generate_days_inline_keyboard(trainings: Vec<Training>) -> InlineKeyboard
     InlineKeyboardMarkup::new(days)
 }
 
-pub fn generate_week_inline_keyboard() -> InlineKeyboardMarkup {
+
+pub fn get_weeks() -> Vec<Vec<NaiveDate>> {
     let today = Utc::now().date_naive();
     let monday = today - Duration::days(today.weekday().num_days_from_monday() as i64);
-    let mut weeks: Vec<Vec<InlineKeyboardButton>> = Vec::new();
+    let mut weeks: Vec<Vec<NaiveDate>> = Vec::new();
     for i in 0..4 {
         let new_monday = monday + Duration::days(i * 7);
         let sunday = monday + Duration::days(i * 7 + 6);
+        weeks.push(vec![new_monday, sunday]);
+    }
+    weeks
+}
+
+pub fn generate_week_inline_keyboard(weeks: Vec<Vec<NaiveDate>>) -> InlineKeyboardMarkup {
+    let mut weeks_keyboard = vec![];
+    for week in weeks {
+        let monday = week[0];
+        let sunday = week[1];
         let week = format!(
             "{} — {}",
-            new_monday.format("%d.%m"),
+            monday.format("%d.%m"),
             sunday.format("%d.%m")
         );
-        weeks.push(vec![InlineKeyboardButton::callback(
+        weeks_keyboard.push(vec![InlineKeyboardButton::callback(
             &week,
-            new_monday.to_string(),
+            monday.to_string(),
         )]);
     }
-    InlineKeyboardMarkup::new(weeks)
+    InlineKeyboardMarkup::new(weeks_keyboard)
 }
 
 pub fn generate_cancel_training_keyboard(trainings: Vec<Training>) -> InlineKeyboardMarkup {

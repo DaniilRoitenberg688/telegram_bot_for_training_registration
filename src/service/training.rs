@@ -2,7 +2,7 @@ use chrono::{Duration, NaiveDate, NaiveTime, Utc};
 use uuid::Uuid;
 
 use crate::{
-    models::{Registration, Training},
+    models::{Registration, RegistrationFullInfo, Training},
     repo::{registration::RegistrationRepo, training::TrainingRepo},
     service::errors::ServiceError,
     types::MyResult,
@@ -123,6 +123,43 @@ impl TrainingService {
     pub async fn cancel_training(&self, training_id: Uuid, user_id: String) -> Result<(), ServiceError> {
         self.registration_repo.delete(user_id, training_id).await?;
         Ok(())
+    }
+
+
+    pub async fn get_trainings_for_trainer_betweeen_dates(&self, from: NaiveDate, to: NaiveDate) -> Vec<Training> {
+        let mut trainings = self.repo.get_trainings_with_registration().await.unwrap_or_else(|e| {
+            eprintln!("cannot get trainings with registrations: {e}");
+            Vec::new()
+        });
+        let now = Utc::now();
+        trainings.retain(|t| {
+            t.date >= now.date_naive() && t.date >= from && t.date <= to
+        });
+        trainings
+    }
+
+    pub async fn get_weeks_with_trainings(&self, weeks: Vec<Vec<NaiveDate>>) -> Vec<Vec<NaiveDate>> {
+        let trainings = self.repo.get_trainings_with_registration().await.unwrap_or_else(|e| {
+            eprintln!("cannot get trainings with registrations: {e}");
+            Vec::new()
+        });
+        let mut needed_weeks = vec![];
+        for week in weeks {
+            let trainings_in_week: Vec<_> = trainings.iter().filter(|t| t.date >= week[0] && t.date <= week[1]).collect();
+            if !trainings_in_week.is_empty() {
+                needed_weeks.push(week);
+            }
+
+        };
+        needed_weeks
+    }
+
+    pub async fn get_trainings_by_date_with_registration(&self, date: NaiveDate) -> Vec<RegistrationFullInfo> {
+        let trainings = self.repo.get_trainings_with_registration_by_date(date).await.unwrap_or_else(|e| {
+            eprintln!("cannot get trainings with registration by date: {e}");
+            Vec::new()
+        });
+        trainings
     }
 
 }

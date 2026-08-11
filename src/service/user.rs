@@ -15,8 +15,14 @@ impl UserService {
     }
 
     pub async fn register(&self, user: User) -> Result<(), ServiceError>{
-        self.repo.get_by_id(user.id.clone()).await?;
-        Ok(())
+        match self.repo.get_by_id(user.id.clone()).await {
+            Ok(_) => Err(ServiceError::NotFound),
+            Err(sqlx::Error::RowNotFound) => {
+                self.repo.create(user).await?;
+                Ok(())
+            },
+            Err(e) => Err(ServiceError::Error { error: e.to_string() })
+        }
     }
 
     pub async fn get_simple_users(&self) -> Vec<User> {

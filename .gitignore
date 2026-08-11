@@ -7,3 +7,4 @@ TODO.txt
 .vscode
 *-shm
 *-wal
+/data
