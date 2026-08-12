@@ -1,5 +1,6 @@
-use chrono::{Duration, Local, NaiveDate, NaiveTime};
+use chrono::{Duration, Utc, NaiveDate, NaiveTime};
 use uuid::Uuid;
+use chrono_tz::Europe::Moscow;
 
 use crate::{
     models::{Registration, RegistrationFullInfo, Training},
@@ -33,12 +34,12 @@ impl TrainingService {
     pub async fn every_day_create(&self) -> Result<(), ServiceError> {
         let trainings = self
             .repo
-            .get_between_dates(Some(Local::now().date_naive()), None, false)
+            .get_between_dates(Some(Utc::now().with_timezone(&Moscow).date_naive()), None, false)
             .await?;
         println!("{:?}", trainings.len());
         let (start, days, last_day) = match trainings.last() {
             Some(t) => (1, 30 - trainings.len(), t.date),
-            _ => (0, 30, Local::now().date_naive()),
+            _ => (0, 30, Utc::now().with_timezone(&Moscow).date_naive()),
         };
         for i in start..days {
             let date = last_day + Duration::days(i as i64);
@@ -65,7 +66,7 @@ impl TrainingService {
                 eprintln!("cannot get trainings for user between dates: {e}");
                 Vec::new()
             });
-        let now = Local::now();
+        let now = Utc::now().with_timezone(&Moscow);
         trainings.retain(|t| t.date >= now.date_naive());
         trainings
     }
@@ -77,7 +78,8 @@ impl TrainingService {
                 Vec::new()
             }
         );
-        let now = Local::now();
+        let now = Utc::now().with_timezone(&Moscow);
+        println!("{now}");
         trainings.retain(|t| t.date > now.date_naive() || (t.start_time >= now.time() && t.date == now.date_naive()));
         trainings
     }
@@ -106,7 +108,7 @@ impl TrainingService {
                 eprintln!("cannot get trainings for user: {e}");
                 Vec::new()
             });
-        let now = Local::now();
+        let now = Utc::now().with_timezone(&Moscow);
         trainings.retain(|t| {
             t.date > now.date_naive() || (t.end_time > now.time() && t.date == now.date_naive())
         });
@@ -129,7 +131,7 @@ impl TrainingService {
             eprintln!("cannot get trainings with registrations: {e}");
             Vec::new()
         });
-        let now = Local::now();
+        let now = Utc::now().with_timezone(&Moscow);
         trainings.retain(|t| {
             t.date >= now.date_naive() && t.date >= from && t.date <= to
         });

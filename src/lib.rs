@@ -8,7 +8,8 @@ mod service;
 mod states;
 mod types;
 
-use chrono::{Datelike, Local, NaiveTime, Weekday};
+use chrono::{Datelike, Local, NaiveTime, Utc, Weekday};
+use chrono_tz::Europe::Moscow;
 use commands::Command;
 use config::Config;
 use handlers::base::{get_name, handle_commands};
@@ -51,7 +52,7 @@ pub async fn run() -> MyResult<()> {
         user_service.clone(),
         notification_repo,
     ));
-    training_service.every_day_create().await;
+    let _ = training_service.every_day_create().await;
     let creation_task = tokio::spawn(create_every_day_training_task(training_service.clone()));
     Dispatcher::builder(bot, handler())
         .dependencies(dptree::deps![
@@ -121,7 +122,7 @@ pub async fn send_every_week_notification(
     let send_time_end = NaiveTime::from_hms_opt(18, 20, 00).unwrap();
     loop {
         tokio::time::sleep(tokio::time::Duration::from_mins(2)).await;
-        let now = Local::now();
+        let now = Utc::now().with_timezone(&Moscow);
         if now.weekday() == Weekday::Mon
             && now.time() >= send_time_start
             && now.time() <= send_time_end
@@ -155,7 +156,7 @@ pub async fn create_every_day_training_task(training_service: Arc<TrainingServic
     let end_time = NaiveTime::from_hms_opt(00, 10, 00).unwrap();
     loop {
         tokio::time::sleep(tokio::time::Duration::from_mins(2)).await;
-        let now = Local::now();
+        let now = Utc::now().with_timezone(&Moscow);
         if start_time <= now.time() && end_time >= now.time() {
             match training_service.every_day_create().await {
                 Ok(_) => println!("new trainings added succesfully"),
