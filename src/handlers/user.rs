@@ -1,4 +1,4 @@
-use ::chrono::{Datelike, Duration, NaiveDate};
+use ::chrono::{Duration, NaiveDate};
 use std::fmt::Write;
 use std::{str::FromStr, sync::Arc};
 use teloxide::types::ParseMode;
@@ -40,7 +40,7 @@ pub async fn handle_user_text(
                     .await?;
             }
             USER_GET_TRAININGS_REPLY_KEYBOARD_TEXT => {
-                println!("{}", msg.chat.id.to_string());
+                println!("{}", msg.chat.id);
                 let user_trainings = training_serivce
                     .get_registered_trainings_for_user(msg.chat.id.to_string())
                     .await;
@@ -198,16 +198,12 @@ pub async fn callback_handler_confirm_registration(
 ) -> MyResult<()> {
     let CallbackQuery { data, message, .. } = q;
     if let Some(m) = message {
-        if let Some(d) = data {
+        if let Some(_d) = data {
             let training_id = training.id;
             let user_id = m.chat().id.to_string();
-            match training_serivce
+            if let Err(e) = training_serivce
                 .register_to_training(user_id, training_id)
-                .await
-            {
-                Err(e) => eprintln!("{:?}", e),
-                _ => {}
-            };
+                .await { eprintln!("{:?}", e) };
             bot.edit_message_text(m.chat().id, m.id(), "✅ Вы успешно записаны на тренировку!")
                 .await?;
             dialogue.update(State::Default).await?;
@@ -252,8 +248,8 @@ pub async fn callback_confirm_cancel_training(
     training_service: Arc<TrainingService>,
 ) -> MyResult<()> {
     let CallbackQuery { data, message, .. } = q;
-    if let Some(msg) = message {
-        if let Some(d) = data {
+    if let Some(msg) = message
+        && let Some(d) = data {
             let id = Uuid::from_str(&d).unwrap();
             match training_service.get(id).await {
                 Some(training) => {
@@ -283,7 +279,6 @@ pub async fn callback_confirm_cancel_training(
                 }
             }
         }
-    }
     Ok(())
 }
 

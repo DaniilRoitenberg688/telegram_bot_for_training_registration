@@ -1,6 +1,5 @@
-use uuid::Uuid;
 
-use crate::{repo::registration::RegistrationRepo, service::errors::ServiceError};
+use crate::repo::registration::RegistrationRepo;
 
 pub struct RegistrationService {
     repo: RegistrationRepo
