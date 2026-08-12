@@ -8,7 +8,7 @@ mod service;
 mod states;
 mod types;
 
-use chrono::{Datelike, Local, NaiveTime, Utc, Weekday};
+use chrono::{Datelike, Local, NaiveTime, Weekday};
 use commands::Command;
 use config::Config;
 use handlers::base::{get_name, handle_commands};
@@ -25,7 +25,7 @@ use crate::handlers::admin::{callback_handler_admin_choose_day, callback_show_ti
 use crate::handlers::user::{
     callback_cancel_training, callback_confirm_cancel_training, callback_handler_choose_day, callback_handler_choose_time, callback_handler_choose_training_to_cancel, callback_handler_confirm_registration
 };
-use crate::repo::notification::{self, NotificationRepo};
+use crate::repo::notification::{NotificationRepo};
 use crate::repo::registration::RegistrationRepo;
 use crate::{
     handlers::user::callback_handler_choose_week,

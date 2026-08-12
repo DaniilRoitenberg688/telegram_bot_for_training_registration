@@ -79,6 +79,7 @@ pub async fn handle_user_text(
                     .await?;
             }
             _ => {
+                println!("cannot understand message");
                 bot.send_message(msg.chat.id, "Извините но я не понимаю вашей команды")
                     .await?;
             }

@@ -1,16 +1,12 @@
 use crate::commands::Command;
-use crate::handlers::user::callback_handler_choose_week;
-use crate::keyboards::*;
 use crate::keyboards::{trainer_reply_keyboard, user_reply_keyboard};
 use crate::models::User;
 use crate::service::errors::ServiceError;
-use crate::service::training::TrainingService;
 use crate::service::user::UserService;
 use crate::states::State;
 use crate::types::{MyDialogue, MyResult};
 use std::sync::Arc;
 use teloxide::prelude::*;
-use teloxide::types::CallbackQuery;
 
 pub async fn handle_commands(
     bot: Bot,
@@ -66,7 +62,7 @@ pub async fn handle_commands(
                     dialogue.update(State::Register).await?;
                     bot.send_message(
                         msg.chat.id,
-                        "Привет! Я бот для записи на тренировки. Введите свое ФИО:",
+                        "Привет! Я бот для записи на тренировки. Введите свое ФИО: (это нужно для опознавания тренером вашего аккаунта)",
                     )
                     .await?;
                 }
@@ -86,6 +82,7 @@ pub async fn get_name(
     dialogue: MyDialogue,
     user_service: Arc<UserService>,
 ) -> MyResult<()> {
+    println!("i am registering a chemp");
     if let Some(name) = msg.text() {
         let user = User {
             id: msg.chat.id.to_string(),

@@ -1,6 +1,4 @@
-use std::fmt::format;
-
-use chrono::{Datelike, Duration, NaiveDate, Utc};
+use chrono::{Datelike, Duration, Local, NaiveDate};
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, KeyboardMarkup};
 
 use crate::models::Training;
@@ -85,7 +83,7 @@ pub fn generate_days_inline_keyboard(trainings: Vec<Training>) -> InlineKeyboard
 
 
 pub fn get_weeks() -> Vec<Vec<NaiveDate>> {
-    let today = Utc::now().date_naive();
+    let today = Local::now().date_naive();
     let monday = today - Duration::days(today.weekday().num_days_from_monday() as i64);
     let mut weeks: Vec<Vec<NaiveDate>> = Vec::new();
     for i in 0..4 {

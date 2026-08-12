@@ -1,11 +1,10 @@
-use chrono::{Duration, NaiveDate, NaiveTime, Utc};
+use chrono::{Duration, Local, NaiveDate, NaiveTime};
 use uuid::Uuid;
 
 use crate::{
     models::{Registration, RegistrationFullInfo, Training},
     repo::{registration::RegistrationRepo, training::TrainingRepo},
     service::errors::ServiceError,
-    types::MyResult,
 };
 
 pub struct TrainingService {
@@ -34,12 +33,12 @@ impl TrainingService {
     pub async fn every_day_create(&self) -> Result<(), ServiceError> {
         let trainings = self
             .repo
-            .get_between_dates(Some(Utc::now().date_naive()), None, false)
+            .get_between_dates(Some(Local::now().date_naive()), None, false)
             .await?;
         println!("{:?}", trainings.len());
         let (start, days, last_day) = match trainings.last() {
             Some(t) => (1, 30 - trainings.len(), t.date),
-            _ => (0, 30, Utc::now().date_naive()),
+            _ => (0, 30, Local::now().date_naive()),
         };
         for i in start..days {
             let date = last_day + Duration::days(i as i64);
@@ -61,27 +60,26 @@ impl TrainingService {
     }
 
     pub async fn get_week_traings(&self, from: NaiveDate, to: NaiveDate) -> Vec<Training> {
-        match self
-            .repo
-            .get_between_dates(Some(from), Some(to), false)
-            .await
-        {
-            Ok(t) => t,
-            Err(err) => {
-                eprintln!("{err}");
+        let mut trainings = self.repo.get_between_dates(Some(from), Some(to), false)
+            .await.unwrap_or_else(|e| {
+                eprintln!("cannot get trainings for user between dates: {e}");
                 Vec::new()
-            }
-        }
+            });
+        let now = Local::now();
+        trainings.retain(|t| t.date >= now.date_naive());
+        trainings
     }
 
     pub async fn get_training_by_date(&self, date: NaiveDate) -> Vec<Training> {
-        match self.repo.get_by_date_without_registration(date).await {
-            Ok(t) => t,
-            Err(e) => {
+        let mut trainings = self.repo.get_by_date_without_registration(date).await.unwrap_or_else(
+            |e| {
                 eprintln!("cannot get trainings by date: {}", e);
                 Vec::new()
             }
-        }
+        );
+        let now = Local::now();
+        trainings.retain(|t| t.date > now.date_naive() || (t.start_time >= now.time() && t.date == now.date_naive()));
+        trainings
     }
 
     pub async fn register_to_training(
@@ -108,7 +106,7 @@ impl TrainingService {
                 eprintln!("cannot get trainings for user: {e}");
                 Vec::new()
             });
-        let now = Utc::now();
+        let now = Local::now();
         trainings.retain(|t| {
             t.date > now.date_naive() || (t.end_time > now.time() && t.date == now.date_naive())
         });
@@ -131,9 +129,13 @@ impl TrainingService {
             eprintln!("cannot get trainings with registrations: {e}");
             Vec::new()
         });
-        let now = Utc::now();
+        let now = Local::now();
         trainings.retain(|t| {
             t.date >= now.date_naive() && t.date >= from && t.date <= to
+        });
+        trainings.sort_by(|a, b| {
+            a.date
+                .cmp(&b.date)
         });
         trainings
     }
@@ -155,9 +157,13 @@ impl TrainingService {
     }
 
     pub async fn get_trainings_by_date_with_registration(&self, date: NaiveDate) -> Vec<RegistrationFullInfo> {
-        let trainings = self.repo.get_trainings_with_registration_by_date(date).await.unwrap_or_else(|e| {
+        let mut trainings = self.repo.get_trainings_with_registration_by_date(date).await.unwrap_or_else(|e| {
             eprintln!("cannot get trainings with registration by date: {e}");
             Vec::new()
+        });
+        trainings.sort_by(|a, b| {
+            a.start_time
+                .cmp(&b.start_time)
         });
         trainings
     }
