@@ -51,6 +51,7 @@ pub async fn run() -> MyResult<()> {
         user_service.clone(),
         notification_repo,
     ));
+    training_service.every_day_create().await;
     let creation_task = tokio::spawn(create_every_day_training_task(training_service.clone()));
     Dispatcher::builder(bot, handler())
         .dependencies(dptree::deps![
