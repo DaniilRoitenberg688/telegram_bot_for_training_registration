@@ -123,7 +123,7 @@ pub async fn send_every_week_notification(
     loop {
         tokio::time::sleep(tokio::time::Duration::from_mins(2)).await;
         let now = Utc::now().with_timezone(&Moscow);
-        if now.weekday() == Weekday::Mon
+        if now.weekday() == Weekday::Sun
             && now.time() >= send_time_start
             && now.time() <= send_time_end
         {
@@ -133,7 +133,7 @@ pub async fn send_every_week_notification(
                     let users = user_service.get_simple_users().await;
                     for user in users.iter() {
                         if let Err(e) = bot
-                            .send_message(user.id.clone(), "Добрый вечер! запишитесь на тренировку")
+                            .send_message(user.id.clone(), "Добрый вечер! Запишитесь на тренировку!")
                             .await
                         {
                             eprintln!("cannot send message to user: {e}");
