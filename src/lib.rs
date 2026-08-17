@@ -137,6 +137,8 @@ pub async fn send_every_week_notification(
                             .await
                         {
                             eprintln!("cannot send message to user: {e}");
+                        } else {
+                            println!("daily message was send")
                         };
                     }
                     if let Err(e) = notif_repo.create(now.date_naive()).await {
