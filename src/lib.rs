@@ -8,7 +8,7 @@ mod service;
 mod states;
 mod types;
 
-use chrono::{Datelike, Local, NaiveTime, Utc, Weekday};
+use chrono::{Datelike, NaiveTime, Utc, Weekday};
 use chrono_tz::Europe::Moscow;
 use commands::Command;
 use config::Config;

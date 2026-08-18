@@ -17,7 +17,6 @@ pub enum State {
 
     AdminChooseWeek,
     AdminChooseDay,
-    AdminShowTrainings,
 }
 
 

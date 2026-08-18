@@ -1,4 +1,4 @@
-use chrono::{Datelike, Duration, Local, NaiveDate, Utc};
+use chrono::{Datelike, Duration, NaiveDate, Utc};
 use chrono_tz::Europe::Moscow;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, KeyboardMarkup};
 
@@ -22,9 +22,9 @@ pub fn weekday_ru(date: NaiveDate) -> &'static str {
 }
 
 
-pub fn create_back_button(callback_data: &str) -> Vec<InlineKeyboardButton> {
-    vec![InlineKeyboardButton::callback("⬅️ Назад", format!("back:{callback_data}"))]
-}
+// pub fn create_back_button(callback_data: &str) -> Vec<InlineKeyboardButton> {
+//     vec![InlineKeyboardButton::callback("⬅️ Назад", format!("back:{callback_data}"))]
+// }
 
 pub fn user_reply_keyboard() -> KeyboardMarkup {
     KeyboardMarkup::new(vec![vec![
