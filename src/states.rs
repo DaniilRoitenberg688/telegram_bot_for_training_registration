@@ -30,6 +30,7 @@ impl From<&str> for State {
             "choosetime" => Self::ChooseTime,
             "showtrainings" => Self::ShowTrainings,
             "choosecanceltraining" => Self::ChooseCancelTraining,
+            "adminchooseday" => Self::AdminChooseDay,
             _ => Self::Default
         } 
     }

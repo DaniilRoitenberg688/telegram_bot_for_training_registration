@@ -23,6 +23,7 @@ use teloxide::{
 };
 
 use crate::handlers::admin::{callback_handler_admin_choose_day, callback_show_time_admin};
+use crate::handlers::base::callback_handler_back;
 use crate::handlers::user::{
     callback_cancel_training, callback_confirm_cancel_training, callback_handler_choose_day, callback_handler_choose_time, callback_handler_choose_training_to_cancel, callback_handler_confirm_registration
 };
@@ -91,9 +92,9 @@ pub fn handler() -> UpdateHandler<Box<dyn Error + Sync + Send>> {
 
     let callback_handler = Update::filter_callback_query()
         .enter_dialogue::<CallbackQuery, InMemStorage<State>, State>()
-        // .branch(dptree::entry().filter(|q: CallbackQuery| {
-        //     q.data.as_deref().is_some_and(|d| d.starts_with("back:"))
-        // }).endpoint(callback_handler_back))
+        .branch(dptree::entry().filter(|q: CallbackQuery| {
+            q.data.as_deref().is_some_and(|d| d.starts_with("back:"))
+        }).endpoint(callback_handler_back))
         .branch(case![State::ChooseWeek].endpoint(callback_handler_choose_week))
         .branch(case![State::ChooseDay].endpoint(callback_handler_choose_day))
         .branch(case![State::ChooseTime].endpoint(callback_handler_choose_time))

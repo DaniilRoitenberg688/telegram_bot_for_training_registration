@@ -105,7 +105,7 @@ pub async fn callback_handler_choose_week(
             bot.edit_message_text(m.chat().id, m.id(), "Выберите дату:")
                 .await?;
             bot.edit_message_reply_markup(m.chat().id, m.id())
-                .reply_markup(generate_days_inline_keyboard(trainings))
+                .reply_markup(generate_days_inline_keyboard(trainings, d))
                 .await?;
             dialogue.update(State::ChooseDay).await?;
         } else {
@@ -127,12 +127,14 @@ pub async fn callback_handler_choose_day(
     let CallbackQuery { data, message, .. } = q;
     if let Some(m) = message {
         if let Some(d) = data {
-            let day = NaiveDate::from_str(&d)?;
+            println!("{d}");
+            let day_string = d.rsplit("/").next().unwrap_or("");
+            let day = NaiveDate::from_str(day_string)?;
             let trainings = training_serivce.get_training_by_date(day).await;
             bot.edit_message_text(m.chat().id, m.id(), "Выберите время:")
                 .await?;
             bot.edit_message_reply_markup(m.chat().id, m.id())
-                .reply_markup(generate_time_inline_keyboard(trainings))
+                .reply_markup(generate_time_inline_keyboard(trainings, d))
                 .await?;
             dialogue.update(State::ChooseTime).await?;
         } else {
@@ -153,7 +155,8 @@ pub async fn callback_handler_choose_time(
     let CallbackQuery { data, message, .. } = q;
     if let Some(m) = message {
         if let Some(d) = data {
-            let id = Uuid::from_str(&d)?;
+            let id_string = d.rsplit("/").next().unwrap_or("");
+            let id = Uuid::from_str(id_string)?;
             let training = training_serivce.get(id).await;
             match training {
                 Some(t) => {
@@ -168,7 +171,7 @@ pub async fn callback_handler_choose_time(
                     )
                     .await?;
                     bot.edit_message_reply_markup(m.chat().id, m.id())
-                        .reply_markup(generate_confirm_registration_inline_keyboard())
+                        .reply_markup(generate_confirm_registration_inline_keyboard(d))
                         .await?;
 
                     dialogue
@@ -265,7 +268,7 @@ pub async fn callback_confirm_cancel_training(
                     )
                     .await?;
                     bot.edit_message_reply_markup(msg.chat().id, msg.id())
-                        .reply_markup(InlineKeyboardMarkup::new(vec![vec![InlineKeyboardButton::callback("❌ Отменить", "cancel")]])).await?;
+                        .reply_markup(InlineKeyboardMarkup::new(vec![vec![InlineKeyboardButton::callback("❌ Отменить", "cancel")], create_back_button("showtrainings", "sdf")])).await?;
                     dialogue.update(State::ConfirmCancelTraining { training }).await?;
                 }
                 None => {

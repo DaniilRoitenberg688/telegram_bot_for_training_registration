@@ -22,9 +22,9 @@ pub fn weekday_ru(date: NaiveDate) -> &'static str {
 }
 
 
-// pub fn create_back_button(callback_data: &str) -> Vec<InlineKeyboardButton> {
-//     vec![InlineKeyboardButton::callback("⬅️ Назад", format!("back:{callback_data}"))]
-// }
+pub fn create_back_button(callback_data: &str, data: &str) -> Vec<InlineKeyboardButton> {
+    vec![InlineKeyboardButton::callback("⬅️ Назад", format!("back:{callback_data},{data}"))]
+}
 
 pub fn user_reply_keyboard() -> KeyboardMarkup {
     KeyboardMarkup::new(vec![vec![
@@ -41,13 +41,17 @@ pub fn trainer_reply_keyboard() -> KeyboardMarkup {
     .resize_keyboard()
 }
 
-pub fn generate_confirm_registration_inline_keyboard() -> InlineKeyboardMarkup {
+pub fn generate_confirm_registration_inline_keyboard(previous_data: String) -> InlineKeyboardMarkup {
     let b = InlineKeyboardButton::callback("✅ Да", "hi");
-    InlineKeyboardMarkup::new(vec![ vec![b]])
+    let (new_previous_data, _) = previous_data.rsplit_once("/").unwrap_or(("", ""));
+    let a = create_back_button("chooseday", &format!("{}/id", new_previous_data));
+    println!("{}", previous_data);
+    let data: Vec<Vec<InlineKeyboardButton>> = vec![vec![b], a];
+    InlineKeyboardMarkup::new(data)
 }
 
-pub fn generate_time_inline_keyboard(trainings: Vec<Training>) -> InlineKeyboardMarkup {
-    let mut time: Vec<Vec<InlineKeyboardButton>> = vec![];
+pub fn generate_time_inline_keyboard(trainings: Vec<Training>, previous_data: String) -> InlineKeyboardMarkup {
+    let mut time: Vec<Vec<InlineKeyboardButton>> = vec![create_back_button("chooseweek", &previous_data)];
     for i in (0..=trainings.len()).step_by(2) {
         let f = trainings.get(i);
         let s = trainings.get(i + 1);
@@ -55,14 +59,14 @@ pub fn generate_time_inline_keyboard(trainings: Vec<Training>) -> InlineKeyboard
         if let Some(t) = f {
             let k = InlineKeyboardButton::callback(
                 t.start_time.format("%H:%M").to_string(),
-                t.id.to_string(),
+                format!("{}/{}", previous_data, t.id.to_string())
             );
             line.push(k);
         }
         if let Some(t) = s {
             let k = InlineKeyboardButton::callback(
                 t.start_time.format("%H:%M").to_string(),
-                t.id.to_string(),
+                format!("{}/{}", previous_data, t.id.to_string())
             );
             line.push(k);
         }
@@ -72,11 +76,11 @@ pub fn generate_time_inline_keyboard(trainings: Vec<Training>) -> InlineKeyboard
     InlineKeyboardMarkup::new(time)
 }
 
-pub fn generate_days_inline_keyboard(trainings: Vec<Training>) -> InlineKeyboardMarkup {
-    let mut days: Vec<Vec<InlineKeyboardButton>> = vec![];
+pub fn generate_days_inline_keyboard(trainings: Vec<Training>, previous_data: String) -> InlineKeyboardMarkup {
+    let mut days: Vec<Vec<InlineKeyboardButton>> = vec![create_back_button("default", "")];
     for t in trainings.iter() {
         let button =
-            InlineKeyboardButton::callback(t.date.format("%d.%m").to_string(), t.date.to_string());
+            InlineKeyboardButton::callback(t.date.format("%d.%m").to_string(), format!("{}/{}", previous_data, t.date.to_string()));
         days.push(vec![button]);
     }
     InlineKeyboardMarkup::new(days)
