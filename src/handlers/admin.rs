@@ -4,7 +4,6 @@ use std::sync::Arc;
 use crate::keyboards::*;
 use chrono::{Duration, NaiveDate};
 use teloxide::prelude::*;
-use teloxide::sugar::bot::BotMessagesExt;
 use teloxide::types::CallbackQuery;
 use teloxide::types::InlineKeyboardMarkup;
 

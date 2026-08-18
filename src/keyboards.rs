@@ -59,14 +59,14 @@ pub fn generate_time_inline_keyboard(trainings: Vec<Training>, previous_data: St
         if let Some(t) = f {
             let k = InlineKeyboardButton::callback(
                 t.start_time.format("%H:%M").to_string(),
-                format!("{}/{}", previous_data, t.id.to_string())
+                format!("{}/{}", previous_data, t.id)
             );
             line.push(k);
         }
         if let Some(t) = s {
             let k = InlineKeyboardButton::callback(
                 t.start_time.format("%H:%M").to_string(),
-                format!("{}/{}", previous_data, t.id.to_string())
+                format!("{}/{}", previous_data, t.id)
             );
             line.push(k);
         }
@@ -80,7 +80,7 @@ pub fn generate_days_inline_keyboard(trainings: Vec<Training>, previous_data: St
     let mut days: Vec<Vec<InlineKeyboardButton>> = vec![create_back_button("default", "")];
     for t in trainings.iter() {
         let button =
-            InlineKeyboardButton::callback(t.date.format("%d.%m").to_string(), format!("{}/{}", previous_data, t.date.to_string()));
+            InlineKeyboardButton::callback(t.date.format("%d.%m").to_string(), format!("{}/{}", previous_data, t.date));
         days.push(vec![button]);
     }
     InlineKeyboardMarkup::new(days)
