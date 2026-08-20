@@ -34,13 +34,13 @@ pub async fn handle_user_text(
     let user_id = msg.chat.id.to_string();
     if let Some(text) = msg.text() {
         match text {
-            USER_REPLY_KEYBOARD_TEXT => {
+            USER_REPLY_KEYBOARD_TEXT if !trainer_ids.contains(&user_id) => {
                 dialogue.update(State::ChooseWeek).await?;
                 bot.send_message(msg.chat.id, "Выберите неделю:")
                     .reply_markup(generate_week_inline_keyboard(get_weeks()))
                     .await?;
             }
-            USER_GET_TRAININGS_REPLY_KEYBOARD_TEXT => {
+            USER_GET_TRAININGS_REPLY_KEYBOARD_TEXT if !trainer_ids.contains(&user_id) => {
                 println!("{}", msg.chat.id);
                 let user_trainings = training_serivce
                     .get_registered_trainings_for_user(msg.chat.id.to_string())
