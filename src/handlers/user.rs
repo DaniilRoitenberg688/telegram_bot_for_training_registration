@@ -100,7 +100,7 @@ pub async fn callback_handler_choose_week(
 ) -> MyResult<()> {
     let m = q.get_message()?;
     let d = q.get_callback_data(m, &bot, &dialogue).await?;
-    let start_week = NaiveDate::from_str(&d)?;
+    let start_week = NaiveDate::from_str(d)?;
     let end_week = start_week + Duration::days(6);
     let trainings = training_serivce
         .get_week_traings(start_week, end_week)
@@ -227,7 +227,7 @@ pub async fn callback_confirm_cancel_training(
 ) -> MyResult<()> {
     let msg = q.get_message()?;
     let d = q.get_callback_data(msg, &bot, &dialogue).await?;
-    let id = Uuid::from_str(&d).unwrap();
+    let id = Uuid::from_str(d).unwrap();
     match training_service.get(id).await {
         Some(training) => {
             bot.edit_message_text(
