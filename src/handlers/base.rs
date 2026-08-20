@@ -1,4 +1,5 @@
 use crate::commands::Command;
+use crate::handlers::{GetCallbackData, GetMessage};
 use crate::handlers::admin::callback_handler_admin_choose_day;
 use crate::handlers::user::{
     callback_handler_choose_day, callback_handler_choose_training_to_cancel,
@@ -135,58 +136,55 @@ pub async fn callback_handler_back(
     trainer_ids: Arc<Vec<String>>,
     training_serivce: Arc<TrainingService>,
 ) -> MyResult<()> {
-    let CallbackQuery { data, message, .. } = q.clone();
-    if let Some(msg) = message
-        && let Some(d) = data
-    {
-        println!("{d}");
-        let (st, back_data) = d.split_once(',').unwrap_or_else(|| {
-            eprintln!("cannot split data from callback on going back: {d}");
-            ("", "")
-        });
-        let (new_query_data, _) = back_data.rsplit_once("/").unwrap_or(("", ""));
-        let mut new_query = q.clone();
-        new_query.data = Some(String::from_str(new_query_data).unwrap());
-        if let Some(state) = st.strip_prefix("back:") {
-            let s: State = state.into();
-            dialogue.update(state).await?;
-            match s {
-                State::Default => {
-                    if trainer_ids.contains(&msg.chat().id.to_string()) {
-                        dialogue.update(State::AdminChooseWeek).await?;
-                        bot.edit_message_text(msg.chat().id, msg.id(), "Выберите неделю:")
-                            .await?;
-                        bot.edit_message_reply_markup(msg.chat().id, msg.id())
-                            .reply_markup(generate_week_inline_keyboard(
-                                training_serivce.get_weeks_with_trainings(get_weeks()).await,
-                            ))
-                            .await?;
-                    } else {
-                        dialogue.update(State::ChooseWeek).await?;
-                        bot.edit_message_text(msg.chat().id, msg.id(), "Выберите неделю:")
-                            .await?;
-                        bot.edit_message_reply_markup(msg.chat().id, msg.id())
-                            .reply_markup(generate_week_inline_keyboard(get_weeks()))
-                            .await?;
-                    }
-                }
-                State::ChooseWeek => {
-                    callback_handler_choose_week(bot, new_query, dialogue, training_serivce)
+    let msg = q.get_message()?;
+    let d = q.get_callback_data(msg, &bot, &dialogue).await?;
+    println!("{d}");
+    let (st, back_data) = d.split_once(',').unwrap_or_else(|| {
+        eprintln!("cannot split data from callback on going back: {d}");
+        ("", "")
+    });
+    let (new_query_data, _) = back_data.rsplit_once("/").unwrap_or(("", ""));
+    let mut new_query = q.clone();
+    new_query.data = Some(String::from_str(new_query_data).unwrap());
+    if let Some(state) = st.strip_prefix("back:") {
+        let s: State = state.into();
+        dialogue.update(state).await?;
+        match s {
+            State::Default => {
+                if trainer_ids.contains(&msg.chat().id.to_string()) {
+                    dialogue.update(State::AdminChooseWeek).await?;
+                    bot.edit_message_text(msg.chat().id, msg.id(), "Выберите неделю:")
+                        .await?;
+                    bot.edit_message_reply_markup(msg.chat().id, msg.id())
+                        .reply_markup(generate_week_inline_keyboard(
+                            training_serivce.get_weeks_with_trainings(get_weeks()).await,
+                        ))
+                        .await?;
+                } else {
+                    dialogue.update(State::ChooseWeek).await?;
+                    bot.edit_message_text(msg.chat().id, msg.id(), "Выберите неделю:")
+                        .await?;
+                    bot.edit_message_reply_markup(msg.chat().id, msg.id())
+                        .reply_markup(generate_week_inline_keyboard(get_weeks()))
                         .await?;
                 }
-                State::ChooseDay => {
-                    callback_handler_choose_day(bot, new_query, dialogue, training_serivce).await?;
-                }
-                State::ShowTrainings => {
-                    callback_handler_choose_training_to_cancel(bot, q, dialogue, training_serivce)
-                        .await?;
-                }
-                State::AdminChooseDay => {
-                    callback_handler_admin_choose_day(bot, new_query, dialogue, training_serivce)
-                        .await?;
-                }
-                _ => {}
             }
+            State::ChooseWeek => {
+                callback_handler_choose_week(bot, new_query, dialogue, training_serivce)
+                    .await?;
+            }
+            State::ChooseDay => {
+                callback_handler_choose_day(bot, new_query, dialogue, training_serivce).await?;
+            }
+            State::ShowTrainings => {
+                callback_handler_choose_training_to_cancel(bot, q, dialogue, training_serivce)
+                    .await?;
+            }
+            State::AdminChooseDay => {
+                callback_handler_admin_choose_day(bot, new_query, dialogue, training_serivce)
+                    .await?;
+            }
+            _ => {}
         }
     }
 
