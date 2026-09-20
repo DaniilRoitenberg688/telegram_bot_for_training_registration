@@ -1,7 +1,7 @@
 use chrono::{NaiveDate, NaiveTime};
-use uuid::Uuid;
+use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
-
+use uuid::Uuid;
 
 #[derive(Debug, Clone, FromRow, Default)]
 pub struct User {
@@ -10,9 +10,8 @@ pub struct User {
     pub username: String,
     pub first_name: String,
     pub last_name: String,
-    pub is_trainer: bool
+    pub is_trainer: bool,
 }
-
 
 #[derive(Debug, Clone, FromRow, Default)]
 pub struct Training {
@@ -21,9 +20,8 @@ pub struct Training {
     pub start_time: NaiveTime,
     pub end_time: NaiveTime,
     pub capacity: u32,
-    pub enabled: bool
+    pub enabled: bool,
 }
-
 
 #[derive(Debug, Clone, FromRow, Default)]
 pub struct Registration {
@@ -35,7 +33,7 @@ pub struct Registration {
 #[derive(Debug, Clone, FromRow, Default)]
 pub struct Notification {
     pub id: Uuid,
-    pub date: NaiveDate
+    pub date: NaiveDate,
 }
 
 #[derive(Debug, Clone, FromRow)]
@@ -45,4 +43,17 @@ pub struct RegistrationFullInfo {
     pub end_time: NaiveTime,
     pub full_name: String,
     pub username: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CancelTrainingAiRequest {
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct CancelResponse {
+    pub date_from: NaiveDate,
+    pub date_to: NaiveDate,
+    pub time_from: NaiveDate,
+    pub time_to: NaiveTime,
 }
