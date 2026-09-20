@@ -47,13 +47,70 @@ pub struct RegistrationFullInfo {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct CancelTrainingAiRequest {
-    pub message: String,
+    pub model: String,
+    pub messages: Vec<Message>,
+    pub stream: bool,
+    pub format: serde_json::Value,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+impl CancelTrainingAiRequest {
+    pub fn new(promt: String, message: String) -> Self {
+        let schema = serde_json::json!({
+            "type": "object",
+            "properties": {
+                "date_from": {
+                    "type": ["string", "null"],
+                    "description": "Дата начала периода в формате YYYY-MM-DD"
+                },
+                "date_to": {
+                    "type": ["string", "null"],
+                    "description": "Дата конца периода в формате YYYY-MM-DD"
+                },
+                "time_from": {
+                    "type": ["string", "null"],
+                    "description": "Время начала периода в формате HH:MM"
+                },
+                "time_to": {
+                    "type": ["string", "null"],
+                    "description": "Время конца периода в формате HH:MM"
+                }
+            },
+            "required": [
+                "date_from",
+                "date_to",
+                "time_from",
+                "time_to"
+            ]
+        });
+
+        Self {
+            model: String::from("qwen3:1.7b"),
+            messages: vec![
+                Message {
+                    role: String::from("system"),
+                    content: promt,
+                },
+                Message {
+                    role: String::from("user"),
+                    content: message,
+                },
+            ],
+            stream: false,
+            format: schema,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Message {
+    pub role: String,
+    pub content: String,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct CancelResponse {
     pub date_from: NaiveDate,
     pub date_to: NaiveDate,
-    pub time_from: NaiveDate,
-    pub time_to: NaiveTime,
+    pub time_from: Option<NaiveDate>,
+    pub time_to: Option<NaiveTime>,
 }
