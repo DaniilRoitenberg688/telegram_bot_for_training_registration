@@ -25,9 +25,12 @@ use teloxide::{
 use crate::handlers::admin::{callback_handler_admin_choose_day, callback_show_time_admin};
 use crate::handlers::base::callback_handler_back;
 use crate::handlers::user::{
-    callback_cancel_training, callback_confirm_cancel_training, callback_handler_choose_day, callback_handler_choose_time, callback_handler_choose_training_to_cancel, callback_handler_confirm_registration
+    callback_cancel_training, callback_confirm_cancel_training, callback_handler_choose_day,
+    callback_handler_choose_time, callback_handler_choose_training_to_cancel,
+    callback_handler_confirm_registration,
 };
-use crate::repo::notification::{NotificationRepo};
+use crate::repo::cancel::CancelRepo;
+use crate::repo::notification::NotificationRepo;
 use crate::repo::registration::RegistrationRepo;
 use crate::{
     handlers::user::callback_handler_choose_week,
@@ -43,7 +46,12 @@ pub async fn run() -> MyResult<()> {
     let user_repo = UserRepo::new(pool.clone());
     let user_service = Arc::new(UserService::new(user_repo));
     let training_repo = TrainingRepo::new(pool.clone());
-    let training_service = Arc::new(TrainingService::new(training_repo, registration_repo));
+    let cancel_repo = CancelRepo::new(config.promt_path, config.ai_api_url, config.ai_key)?;
+    let training_service = Arc::new(TrainingService::new(
+        training_repo,
+        registration_repo,
+        cancel_repo,
+    ));
     let notification_repo = NotificationRepo::new(pool.clone());
 
     let bot = Bot::new(config.token);
@@ -92,13 +100,16 @@ pub fn handler() -> UpdateHandler<Box<dyn Error + Sync + Send>> {
 
     let callback_handler = Update::filter_callback_query()
         .enter_dialogue::<CallbackQuery, InMemStorage<State>, State>()
-        .branch(dptree::entry().filter(|q: CallbackQuery| {
-            q.data.as_deref().is_some_and(|d| d.starts_with("back:"))
-        }).endpoint(callback_handler_back))
+        .branch(
+            dptree::entry()
+                .filter(|q: CallbackQuery| {
+                    q.data.as_deref().is_some_and(|d| d.starts_with("back:"))
+                })
+                .endpoint(callback_handler_back),
+        )
         .branch(case![State::ChooseWeek].endpoint(callback_handler_choose_week))
         .branch(case![State::ChooseDay].endpoint(callback_handler_choose_day))
         .branch(case![State::ChooseTime].endpoint(callback_handler_choose_time))
-
         .branch(
             case![State::ConfirmRegistration { training }]
                 .endpoint(callback_handler_confirm_registration),
@@ -134,7 +145,10 @@ pub async fn send_every_week_notification(
                     let users = user_service.get_simple_users().await;
                     for user in users.iter() {
                         if let Err(e) = bot
-                            .send_message(user.id.clone(), "Добрый вечер! Запишитесь на тренировку!")
+                            .send_message(
+                                user.id.clone(),
+                                "Добрый вечер! Запишитесь на тренировку!",
+                            )
                             .await
                         {
                             eprintln!("cannot send message to user: {e}");
