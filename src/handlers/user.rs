@@ -1,7 +1,7 @@
 use ::chrono::{Duration, NaiveDate};
 use std::fmt::Write;
 use std::{str::FromStr, sync::Arc};
-use teloxide::types::{ParseMode};
+use teloxide::types::ParseMode;
 use teloxide::{
     Bot,
     payloads::{EditMessageReplyMarkupSetters, SendMessageSetters},
@@ -78,7 +78,11 @@ pub async fn handle_user_text(
                     .await?;
             }
             TRAINER_REPLY_KEYBOARD_EDIT_TEXT if trainer_ids.contains(&user_id) => {
-                bot.send_message(msg.chat.id, "Данная функция еще не работает")
+                dialogue
+                    .update(State::AdminWaitingForMessageAboutCancel)
+                    .await?;
+                bot.send_message(msg.chat.id, "Какие тренировки отменить? \nНапример: <i>Отмени все тренировки с завтрашнего дня до 21 сентября</i>")
+                    .parse_mode(ParseMode::Html)
                     .await?;
             }
             _ => {
@@ -90,7 +94,6 @@ pub async fn handle_user_text(
     }
     Ok(())
 }
-
 
 pub async fn callback_handler_choose_week(
     bot: Bot,

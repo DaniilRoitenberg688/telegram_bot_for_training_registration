@@ -22,7 +22,10 @@ use teloxide::{
     types::Update,
 };
 
-use crate::handlers::admin::{callback_handler_admin_choose_day, callback_show_time_admin};
+use crate::handlers::admin::{
+    callback_admin_cancel_training, callback_handler_admin_choose_day, callback_show_time_admin,
+    handle_cancel_training_message,
+};
 use crate::handlers::base::callback_handler_back;
 use crate::handlers::user::{
     callback_cancel_training, callback_confirm_cancel_training, callback_handler_choose_day,
@@ -96,6 +99,10 @@ pub fn handler() -> UpdateHandler<Box<dyn Error + Sync + Send>> {
                 .endpoint(handle_commands),
         )
         .branch(case![State::Register].endpoint(get_name))
+        .branch(
+            case![State::AdminWaitingForMessageAboutCancel]
+                .endpoint(handle_cancel_training_message),
+        )
         .branch(dptree::entry().endpoint(handle_user_text));
 
     let callback_handler = Update::filter_callback_query()
@@ -118,7 +125,11 @@ pub fn handler() -> UpdateHandler<Box<dyn Error + Sync + Send>> {
         .branch(case![State::ChooseCancelTraining].endpoint(callback_confirm_cancel_training))
         .branch(case![State::ConfirmCancelTraining { training }].endpoint(callback_cancel_training))
         .branch(case![State::AdminChooseWeek].endpoint(callback_handler_admin_choose_day))
-        .branch(case![State::AdminChooseDay].endpoint(callback_show_time_admin));
+        .branch(case![State::AdminChooseDay].endpoint(callback_show_time_admin))
+        .branch(
+            case![State::AdminConfirmCancelTraining { resp }]
+                .endpoint(callback_admin_cancel_training),
+        );
 
     dptree::entry()
         .branch(message_handler)

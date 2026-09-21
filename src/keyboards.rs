@@ -7,7 +7,7 @@ use crate::models::Training;
 pub const USER_REPLY_KEYBOARD_TEXT: &str = "Записаться на тренировку";
 pub const USER_GET_TRAININGS_REPLY_KEYBOARD_TEXT: &str = "Посмотреть мои записи";
 pub const TRAINER_REPLY_KEYBOARD_SHOW_TEXT: &str = "Посмотреть записи";
-pub const TRAINER_REPLY_KEYBOARD_EDIT_TEXT: &str = "Изменить расписание";
+pub const TRAINER_REPLY_KEYBOARD_EDIT_TEXT: &str = "Отменить тренировку";
 
 pub fn weekday_ru(date: NaiveDate) -> &'static str {
     match date.weekday() {
@@ -21,9 +21,11 @@ pub fn weekday_ru(date: NaiveDate) -> &'static str {
     }
 }
 
-
 pub fn create_back_button(callback_data: &str, data: &str) -> Vec<InlineKeyboardButton> {
-    vec![InlineKeyboardButton::callback("⬅️ Назад", format!("back:{callback_data},{data}"))]
+    vec![InlineKeyboardButton::callback(
+        "⬅️ Назад",
+        format!("back:{callback_data},{data}"),
+    )]
 }
 
 pub fn user_reply_keyboard() -> KeyboardMarkup {
@@ -37,11 +39,14 @@ pub fn user_reply_keyboard() -> KeyboardMarkup {
 pub fn trainer_reply_keyboard() -> KeyboardMarkup {
     KeyboardMarkup::new(vec![vec![
         KeyboardButton::new(TRAINER_REPLY_KEYBOARD_SHOW_TEXT),
+        KeyboardButton::new(TRAINER_REPLY_KEYBOARD_EDIT_TEXT),
     ]])
     .resize_keyboard()
 }
 
-pub fn generate_confirm_registration_inline_keyboard(previous_data: String) -> InlineKeyboardMarkup {
+pub fn generate_confirm_registration_inline_keyboard(
+    previous_data: String,
+) -> InlineKeyboardMarkup {
     let b = InlineKeyboardButton::callback("✅ Да", "hi");
     let (new_previous_data, _) = previous_data.rsplit_once("/").unwrap_or(("", ""));
     let a = create_back_button("chooseday", &format!("{}/id", new_previous_data));
@@ -50,8 +55,12 @@ pub fn generate_confirm_registration_inline_keyboard(previous_data: String) -> I
     InlineKeyboardMarkup::new(data)
 }
 
-pub fn generate_time_inline_keyboard(trainings: Vec<Training>, previous_data: String) -> InlineKeyboardMarkup {
-    let mut time: Vec<Vec<InlineKeyboardButton>> = vec![create_back_button("chooseweek", &previous_data)];
+pub fn generate_time_inline_keyboard(
+    trainings: Vec<Training>,
+    previous_data: String,
+) -> InlineKeyboardMarkup {
+    let mut time: Vec<Vec<InlineKeyboardButton>> =
+        vec![create_back_button("chooseweek", &previous_data)];
     for i in (0..=trainings.len()).step_by(2) {
         let f = trainings.get(i);
         let s = trainings.get(i + 1);
@@ -59,14 +68,14 @@ pub fn generate_time_inline_keyboard(trainings: Vec<Training>, previous_data: St
         if let Some(t) = f {
             let k = InlineKeyboardButton::callback(
                 t.start_time.format("%H:%M").to_string(),
-                format!("{}/{}", previous_data, t.id)
+                format!("{}/{}", previous_data, t.id),
             );
             line.push(k);
         }
         if let Some(t) = s {
             let k = InlineKeyboardButton::callback(
                 t.start_time.format("%H:%M").to_string(),
-                format!("{}/{}", previous_data, t.id)
+                format!("{}/{}", previous_data, t.id),
             );
             line.push(k);
         }
@@ -76,16 +85,20 @@ pub fn generate_time_inline_keyboard(trainings: Vec<Training>, previous_data: St
     InlineKeyboardMarkup::new(time)
 }
 
-pub fn generate_days_inline_keyboard(trainings: Vec<Training>, previous_data: String) -> InlineKeyboardMarkup {
+pub fn generate_days_inline_keyboard(
+    trainings: Vec<Training>,
+    previous_data: String,
+) -> InlineKeyboardMarkup {
     let mut days: Vec<Vec<InlineKeyboardButton>> = vec![create_back_button("default", "")];
     for t in trainings.iter() {
-        let button =
-            InlineKeyboardButton::callback(t.date.format("%d.%m").to_string(), format!("{}/{}", previous_data, t.date));
+        let button = InlineKeyboardButton::callback(
+            t.date.format("%d.%m").to_string(),
+            format!("{}/{}", previous_data, t.date),
+        );
         days.push(vec![button]);
     }
     InlineKeyboardMarkup::new(days)
 }
-
 
 pub fn get_weeks() -> Vec<Vec<NaiveDate>> {
     let today = Utc::now().with_timezone(&Moscow).date_naive();
@@ -104,11 +117,7 @@ pub fn generate_week_inline_keyboard(weeks: Vec<Vec<NaiveDate>>) -> InlineKeyboa
     for week in weeks {
         let monday = week[0];
         let sunday = week[1];
-        let week = format!(
-            "{} — {}",
-            monday.format("%d.%m"),
-            sunday.format("%d.%m")
-        );
+        let week = format!("{} — {}", monday.format("%d.%m"), sunday.format("%d.%m"));
         weeks_keyboard.push(vec![InlineKeyboardButton::callback(
             &week,
             monday.to_string(),
@@ -132,4 +141,11 @@ pub fn generate_cancel_training_keyboard(trainings: Vec<Training>) -> InlineKeyb
         keyboard.push(vec![b]);
     }
     InlineKeyboardMarkup::new(keyboard)
+}
+
+pub fn generate_keyboard_for_training_cancelation() -> InlineKeyboardMarkup {
+    InlineKeyboardMarkup::new(vec![vec![InlineKeyboardButton::callback(
+        "Отменить",
+        "cancel_training",
+    )]])
 }

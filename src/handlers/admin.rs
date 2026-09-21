@@ -4,6 +4,7 @@ use std::sync::Arc;
 use crate::handlers::GetCallbackData;
 use crate::handlers::GetMessage;
 use crate::keyboards::*;
+use crate::models::CancelResponse;
 use chrono::{Duration, NaiveDate};
 use teloxide::prelude::*;
 use teloxide::types::CallbackQuery;
@@ -70,6 +71,61 @@ pub async fn callback_show_time_admin(
             "adminchooseday",
             d,
         )]))
+        .await?;
+    dialogue.update(State::Default).await?;
+    Ok(())
+}
+
+pub async fn handle_cancel_training_message(
+    bot: Bot,
+    msg: Message,
+    dialogue: MyDialogue,
+    training_serivce: Arc<TrainingService>,
+) -> MyResult<()> {
+    let text = msg.text().unwrap_or("");
+    let resp = match training_serivce
+        .create_cancel_response(text.to_string())
+        .await
+    {
+        Ok(resp) => resp,
+        Err(e) => {
+            eprintln!("{e}");
+            bot.send_message(msg.chat.id, "Не могу понять ваш запрос")
+                .parse_mode(teloxide::types::ParseMode::Html)
+                .await?;
+            dialogue.update(State::Default).await?;
+            return Ok(());
+        }
+    };
+    bot.send_message(msg.chat.id, resp.to_string())
+        .reply_markup(generate_keyboard_for_training_cancelation())
+        .await?;
+    dialogue
+        .update(State::AdminConfirmCancelTraining { resp })
+        .await?;
+    Ok(())
+}
+
+pub async fn callback_admin_cancel_training(
+    bot: Bot,
+    q: CallbackQuery,
+    resp: CancelResponse,
+    dialogue: MyDialogue,
+    training_serivce: Arc<TrainingService>,
+) -> MyResult<()> {
+    let m = q.get_message()?;
+    match training_serivce.cancel_trainings(resp).await {
+        Ok(()) => {}
+        Err(e) => {
+            eprintln!("{e}");
+            bot.edit_message_text(m.chat().id, m.id(), "Не могу отменить тренировки")
+                .parse_mode(teloxide::types::ParseMode::Html)
+                .await?;
+            dialogue.update(State::Default).await?;
+            return Ok(());
+        }
+    }
+    bot.edit_message_text(m.chat().id, m.id(), "Тренировки успешно отменены!")
         .await?;
     dialogue.update(State::Default).await?;
     Ok(())

@@ -30,10 +30,12 @@ impl TrainingRepo {
     }
 
     pub async fn get_by_id(&self, id: Uuid) -> Result<Training, sqlx::Error> {
-        let training = sqlx::query_as::<_, Training>("select * from trainings where id = $1")
-            .bind(id)
-            .fetch_one(&self.db)
-            .await?;
+        let training = sqlx::query_as::<_, Training>(
+            "select * from trainings where id = $1 and enabled = true",
+        )
+        .bind(id)
+        .fetch_one(&self.db)
+        .await?;
         Ok(training)
     }
 
@@ -43,10 +45,10 @@ impl TrainingRepo {
         to: Option<chrono::NaiveDate>,
         repeats: bool,
     ) -> Result<Vec<Training>, ServiceError> {
-        let mut sql = "select * from trainings where ($1 is NULL or date >= $1) and ($2 is NULL or date <= $2)";
+        let mut sql = "select * from trainings where ($1 is NULL or date >= $1) and ($2 is NULL or date <= $2) and enabled = true";
         if !repeats {
             sql = "select id, date, start_time, end_time, capacity, enabled from trainings
-                    where ($1 is NULL or date >= $1) and ($2 is NULL or date <= $2)
+                    where ($1 is NULL or date >= $1) and ($2 is NULL or date <= $2) and enabled = true
                     group by date";
         }
         let trainings = sqlx::query_as::<_, Training>(sql)
@@ -58,10 +60,12 @@ impl TrainingRepo {
     }
 
     pub async fn get_by_date(&self, date: NaiveDate) -> Result<Vec<Training>, sqlx::Error> {
-        let training = sqlx::query_as::<_, Training>("select * from trainings where date = $1")
-            .bind(date)
-            .fetch_all(&self.db)
-            .await?;
+        let training = sqlx::query_as::<_, Training>(
+            "select * from trainings where date = $1 and enabled = true",
+        )
+        .bind(date)
+        .fetch_all(&self.db)
+        .await?;
         Ok(training)
     }
 
@@ -71,7 +75,8 @@ impl TrainingRepo {
     ) -> Result<Vec<Training>, sqlx::Error> {
         let training = sqlx::query_as::<_, Training>("select trainings.id as id, date, start_time, end_time, capacity, enabled from trainings
                                                         left join registrations on trainings.id = training_id
-                                                        where registrations.id is NULL and date = $1")
+                                                        where enabled = true
+                                                        and registrations.id is NULL and date = $1")
             .bind(date)
             .fetch_all(&self.db)
             .await?;
@@ -84,7 +89,7 @@ impl TrainingRepo {
     ) -> Result<Vec<Training>, sqlx::Error> {
         let trainings = sqlx::query_as::<_, Training>("select trainings.id as id, date, start_time, end_time, capacity, enabled from registrations
                                                         join trainings on trainings.id = registrations.training_id
-                                                        where user_id = $1")
+                                                        where user_id = $1 and enabled = true")
             .bind(user_id)
             .fetch_all(&self.db).await?;
         Ok(trainings)
@@ -93,7 +98,7 @@ impl TrainingRepo {
     pub async fn get_trainings_with_registration(&self) -> Result<Vec<Training>, sqlx::Error> {
         let training = sqlx::query_as::<_, Training>("select trainings.id as id, date, start_time, end_time, capacity, enabled from trainings
                                                         left join registrations on trainings.id = training_id
-                                                        where registrations.id is not NULL
+                                                        where registrations.id is not NULL and enabled = true
                                                         group by date")
             .fetch_all(&self.db)
             .await?;
@@ -108,7 +113,7 @@ impl TrainingRepo {
             "select date, start_time, end_time, full_name, username from trainings
             left join registrations on trainings.id = training_id
             join users on users.id = user_id
-            where registrations.id is not NULL and date = $1",
+            where registrations.id is not NULL and date = $1 and enabled = true",
         )
         .bind(date)
         .fetch_all(&self.db)
@@ -121,23 +126,19 @@ impl TrainingRepo {
         training_response: CancelResponse,
     ) -> Result<(), sqlx::Error> {
         sqlx::query(
-            "INSERT INTO trainings (enabled) VALUES (false)
-          WHERE date >= ?1
-          AND date <= ?2
-          AND (
-              (?3 IS NULL AND ?4 IS NULL)
-              OR
-              (?3 IS NOT NULL AND ?4 IS NULL AND start_time >= ?3)
-              OR
-              (?3 IS NULL AND ?4 IS NOT NULL AND start_time <= ?4)
-              OR
-              (?3 IS NOT NULL AND ?4 IS NOT NULL AND start_time >= ?3 AND start_time <= ?4)
-          )",
+            "
+            UPDATE trainings
+            SET enabled = false
+            WHERE date >= ?1
+              AND date <= ?2
+              AND (?3 IS NULL OR start_time >= ?3)
+              AND (?4 IS NULL OR start_time <= ?4)
+          ",
         )
         .bind(training_response.date_from)
         .bind(training_response.date_to)
-        .bind(training_response.date_from)
-        .bind(training_response.date_to)
+        .bind(training_response.time_from)
+        .bind(training_response.time_to)
         .execute(&self.db)
         .await?;
         Ok(())

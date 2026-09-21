@@ -1,4 +1,4 @@
-use crate::models::Training;
+use crate::models::{CancelResponse, Training};
 
 #[derive(Default, Debug, Clone)]
 pub enum State {
@@ -7,22 +7,30 @@ pub enum State {
     Register,
 
     ChooseWeek,
-    ChooseDay ,
+    ChooseDay,
     ChooseTime,
-    ConfirmRegistration {training: Training},
+    ConfirmRegistration {
+        training: Training,
+    },
 
     ShowTrainings,
     ChooseCancelTraining,
-    ConfirmCancelTraining {training: Training},
+    ConfirmCancelTraining {
+        training: Training,
+    },
 
     AdminChooseWeek,
     AdminChooseDay,
-}
 
+    AdminWaitingForMessageAboutCancel,
+    AdminConfirmCancelTraining {
+        resp: CancelResponse,
+    },
+}
 
 impl From<&str> for State {
     fn from(value: &str) -> Self {
-       match value {
+        match value {
             "default" => Self::Default,
             "register" => Self::Register,
             "chooseweek" => Self::ChooseWeek,
@@ -31,7 +39,7 @@ impl From<&str> for State {
             "showtrainings" => Self::ShowTrainings,
             "choosecanceltraining" => Self::ChooseCancelTraining,
             "adminchooseday" => Self::AdminChooseDay,
-            _ => Self::Default
-        } 
+            _ => Self::Default,
+        }
     }
 }

@@ -52,50 +52,6 @@ pub struct CancelTrainingAiRequest {
     pub stream: bool,
 }
 
-pub fn create_cancel_request(promt: String, message: String) -> serde_json::Value {
-    serde_json::json!({
-        "model": "nex-agi/nex-n2.5-mini:free",
-        "messages": [
-            {
-                "role": "system",
-                "content": promt
-            },
-            {
-                "role": "user",
-                "content": message
-            }
-        ],
-        "stream": false,
-        "max_tokens": 200,
-        "reasoning": {
-            "enabled": false
-        },
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {
-                "name": "cancel_training",
-                "strict": true,
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "date_from": {"type": ["string", "null"]},
-                        "date_to": {"type": ["string", "null"]},
-                        "time_from": {"type": ["string", "null"]},
-                        "time_to": {"type": ["string", "null"]}
-                    },
-                    "required": [
-                        "date_from",
-                        "date_to",
-                        "time_from",
-                        "time_to"
-                    ],
-                    "additionalProperties": false
-                }
-            }
-        }
-    })
-}
-
 impl CancelTrainingAiRequest {
     pub fn new(promt: String, message: String) -> Self {
         Self {
@@ -129,18 +85,55 @@ pub struct CancelResponse {
     pub time_to: Option<NaiveTime>,
 }
 
+impl ToString for CancelResponse {
+    fn to_string(&self) -> String {
+        let mut res = "Отмена: ".to_string();
+        if self.date_from == self.date_to {
+            res += &format!("{} ", self.date_from.format("%d.%m"));
+        } else {
+            res += &format!(
+                "{} - {} ",
+                self.date_from.format("%d.%m"),
+                self.date_to.format("%d.%m")
+            );
+        }
+
+        if let Some(time_from) = self.time_from
+            && let Some(time_to) = self.time_to
+        {
+            if time_to == time_from {
+                res += &format!("в {}", time_from.format("%H:%M"));
+            } else {
+                res += &format!(
+                    "c {} по {}",
+                    time_from.format("%H:%M"),
+                    time_to.format("%H:%M")
+                );
+            }
+        };
+
+        if let Some(time_from) = self.time_from
+            && let None = self.time_to
+        {
+            res += &format!("c {} до конца дня", time_from.format("%H:%M"));
+        }
+
+        if let None = self.time_from
+            && let Some(time_to) = self.time_to
+        {
+            res += &format!("c начал дня до {}", time_to.format("%H:%M"));
+        }
+
+        res
+    }
+}
+
 #[derive(Deserialize, Debug)]
 pub struct OllamaResponse {
     pub message: OllamaMessage,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct Choices {
-    pub message: OllamaMessage,
-}
-
 #[derive(Deserialize, Debug)]
 pub struct OllamaMessage {
-    pub role: String,
     pub content: String,
 }
