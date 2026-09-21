@@ -1,30 +1,14 @@
-use std::{fmt::Display};
-
+use reqwest;
 use thiserror::Error;
 
-#[derive(Debug, Clone, Error)]
+#[derive(Debug, Error)]
 pub enum ServiceError {
+    #[error("failed to find object in database")]
     NotFound,
-    Error { error: String },
+    #[error("failed to execute SQL query: {0}")]
+    Sql(#[from] sqlx::Error),
+    #[error("reqwest sending error: {0}")]
+    ReqwestSend(#[from] reqwest::Error),
+    #[error("json parsing error: {0}")]
+    Json(#[from] serde_json::Error),
 }
-
-impl Display for ServiceError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::NotFound => write!(f, "cannot find object"),
-            Self::Error { error } => write!(f, "unexpected error: {}", error)
-        }
-    }
-}
-
-impl From<sqlx::Error> for ServiceError {
-    fn from(value: sqlx::Error) -> Self {
-        match value {
-            sqlx::Error::RowNotFound => Self::NotFound,
-            _ => Self::Error {
-                error: value.to_string(),
-            },
-        }
-    }
-}
-

@@ -5,14 +5,3 @@ services:
     env_file: .env          # TELOXIDE_TOKEN=...
     volumes:
       - ./data:/app/data
-  ollama:
-    image: ollama/ollama:latest
-    container_name: training-bot-ollama
-    volumes:
-      - ollama_data:/root/.ollama
-    ports:
-      - "11434:11434"
-    restart: unless-stopped
-
-volumes:
-  ollama_data:

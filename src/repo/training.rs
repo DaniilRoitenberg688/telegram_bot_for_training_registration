@@ -2,7 +2,10 @@ use chrono::NaiveDate;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
-use crate::models::{RegistrationFullInfo, Training};
+use crate::{
+    models::{CancelResponse, RegistrationFullInfo, Training},
+    service::errors::ServiceError,
+};
 
 pub struct TrainingRepo {
     db: SqlitePool,
@@ -39,10 +42,10 @@ impl TrainingRepo {
         from: Option<chrono::NaiveDate>,
         to: Option<chrono::NaiveDate>,
         repeats: bool,
-    ) -> Result<Vec<Training>, sqlx::Error> {
+    ) -> Result<Vec<Training>, ServiceError> {
         let mut sql = "select * from trainings where ($1 is NULL or date >= $1) and ($2 is NULL or date <= $2)";
         if !repeats {
-            sql = "select id, date, start_time, end_time, capacity, enabled from trainings 
+            sql = "select id, date, start_time, end_time, capacity, enabled from trainings
                     where ($1 is NULL or date >= $1) and ($2 is NULL or date <= $2)
                     group by date";
         }
@@ -79,8 +82,8 @@ impl TrainingRepo {
         &self,
         user_id: String,
     ) -> Result<Vec<Training>, sqlx::Error> {
-        let trainings = sqlx::query_as::<_, Training>("select trainings.id as id, date, start_time, end_time, capacity, enabled from registrations 
-                                                        join trainings on trainings.id = registrations.training_id 
+        let trainings = sqlx::query_as::<_, Training>("select trainings.id as id, date, start_time, end_time, capacity, enabled from registrations
+                                                        join trainings on trainings.id = registrations.training_id
                                                         where user_id = $1")
             .bind(user_id)
             .fetch_all(&self.db).await?;
@@ -111,5 +114,32 @@ impl TrainingRepo {
         .fetch_all(&self.db)
         .await?;
         Ok(trainings)
+    }
+
+    pub async fn cancel_training(
+        &self,
+        training_response: CancelResponse,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            "INSERT INTO trainings (enabled) VALUES (false)
+          WHERE date >= ?1
+          AND date <= ?2
+          AND (
+              (?3 IS NULL AND ?4 IS NULL)
+              OR
+              (?3 IS NOT NULL AND ?4 IS NULL AND start_time >= ?3)
+              OR
+              (?3 IS NULL AND ?4 IS NOT NULL AND start_time <= ?4)
+              OR
+              (?3 IS NOT NULL AND ?4 IS NOT NULL AND start_time >= ?3 AND start_time <= ?4)
+          )",
+        )
+        .bind(training_response.date_from)
+        .bind(training_response.date_to)
+        .bind(training_response.date_from)
+        .bind(training_response.date_to)
+        .execute(&self.db)
+        .await?;
+        Ok(())
     }
 }

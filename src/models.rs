@@ -50,41 +50,56 @@ pub struct CancelTrainingAiRequest {
     pub model: String,
     pub messages: Vec<Message>,
     pub stream: bool,
-    pub format: serde_json::Value,
+}
+
+pub fn create_cancel_request(promt: String, message: String) -> serde_json::Value {
+    serde_json::json!({
+        "model": "nex-agi/nex-n2.5-mini:free",
+        "messages": [
+            {
+                "role": "system",
+                "content": promt
+            },
+            {
+                "role": "user",
+                "content": message
+            }
+        ],
+        "stream": false,
+        "max_tokens": 200,
+        "reasoning": {
+            "enabled": false
+        },
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "cancel_training",
+                "strict": true,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "date_from": {"type": ["string", "null"]},
+                        "date_to": {"type": ["string", "null"]},
+                        "time_from": {"type": ["string", "null"]},
+                        "time_to": {"type": ["string", "null"]}
+                    },
+                    "required": [
+                        "date_from",
+                        "date_to",
+                        "time_from",
+                        "time_to"
+                    ],
+                    "additionalProperties": false
+                }
+            }
+        }
+    })
 }
 
 impl CancelTrainingAiRequest {
     pub fn new(promt: String, message: String) -> Self {
-        let schema = serde_json::json!({
-            "type": "object",
-            "properties": {
-                "date_from": {
-                    "type": ["string", "null"],
-                    "description": "Дата начала периода в формате YYYY-MM-DD"
-                },
-                "date_to": {
-                    "type": ["string", "null"],
-                    "description": "Дата конца периода в формате YYYY-MM-DD"
-                },
-                "time_from": {
-                    "type": ["string", "null"],
-                    "description": "Время начала периода в формате HH:MM"
-                },
-                "time_to": {
-                    "type": ["string", "null"],
-                    "description": "Время конца периода в формате HH:MM"
-                }
-            },
-            "required": [
-                "date_from",
-                "date_to",
-                "time_from",
-                "time_to"
-            ]
-        });
-
         Self {
-            model: String::from("qwen3:1.7b"),
+            model: String::from("gpt-oss:120b-cloud"),
             messages: vec![
                 Message {
                     role: String::from("system"),
@@ -96,7 +111,6 @@ impl CancelTrainingAiRequest {
                 },
             ],
             stream: false,
-            format: schema,
         }
     }
 }
@@ -111,6 +125,22 @@ pub struct Message {
 pub struct CancelResponse {
     pub date_from: NaiveDate,
     pub date_to: NaiveDate,
-    pub time_from: Option<NaiveDate>,
+    pub time_from: Option<NaiveTime>,
     pub time_to: Option<NaiveTime>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct OllamaResponse {
+    pub message: OllamaMessage,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Choices {
+    pub message: OllamaMessage,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct OllamaMessage {
+    pub role: String,
+    pub content: String,
 }
