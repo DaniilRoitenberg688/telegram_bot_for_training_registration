@@ -2,7 +2,7 @@ services:
   bot:
     build: .
     restart: unless-stopped
-    env_file: .env          # TELOXIDE_TOKEN=...
+    env_file: app/.env          # TELOXIDE_TOKEN=...
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
