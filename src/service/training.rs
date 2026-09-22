@@ -53,7 +53,7 @@ impl TrainingService {
         };
         for i in start..days {
             let date = last_day + Duration::days(i as i64);
-            for j in 9..20 {
+            for j in 7..=22 {
                 let start_time = NaiveTime::from_hms_opt(j, 0, 0).unwrap_or_default();
                 let end_time = NaiveTime::from_hms_opt(j + 1, 0, 0).unwrap_or_default();
                 let training = Training {
