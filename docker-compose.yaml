@@ -7,3 +7,4 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./data:/app/data
+      - ./promts:/app/promts
