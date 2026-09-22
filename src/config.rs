@@ -11,7 +11,10 @@ pub struct Config {
 
 impl Config {
     pub fn build() -> Config {
-        dotenvy::dotenv().expect("failed to load data from .env");
+        dotenvy::dotenv().unwrap_or_else(|e| {
+            eprintln!("cannot load .env file: {e}");
+            PathBuf::new()
+        });
         let token = env::var("TOKEN").expect("TOKEN variable must be set");
         let database_url = env::var("DATABASE_URL").expect("DATABASE_URL variable must be set");
         let trainer_ids_string = env::var("TRAINER_IDS").expect("TRAINER_IDS variable must be set");
