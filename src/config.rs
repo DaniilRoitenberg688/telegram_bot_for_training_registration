@@ -7,6 +7,7 @@ pub struct Config {
     pub ai_key: String,
     pub ai_api_url: String,
     pub promt_path: String,
+    pub port: String,
 }
 
 impl Config {
@@ -21,6 +22,7 @@ impl Config {
         let ai_key = env::var("AI_KEY").expect("AI_KEY variable must be set");
         let ai_api_url = env::var("AI_API_URL").expect("AI_API_URL variable must be set");
         let promt_path = env::var("PROMPT_PATH").expect("PROMPT_PATH variable must be set");
+        let port = env::var("PORT").expect("PORT must be set");
 
         let trainer_ids: Vec<String> = trainer_ids_string
             .split(",")
@@ -33,6 +35,7 @@ impl Config {
             ai_key,
             ai_api_url,
             promt_path,
+            port,
         }
     }
 }

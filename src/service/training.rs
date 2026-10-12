@@ -94,7 +94,6 @@ impl TrainingService {
                 Vec::new()
             });
         let now = Utc::now().with_timezone(&Moscow);
-        println!("{now}");
         trainings.retain(|t| {
             t.date > now.date_naive() || (t.start_time >= now.time() && t.date == now.date_naive())
         });

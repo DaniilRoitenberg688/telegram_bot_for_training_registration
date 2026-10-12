@@ -9,6 +9,5 @@ async fn main() {
         eprintln!("An error occured while running telegram bot: {:#}", err);
         process::exit(1)
     });
-    println!("everything ended")
-
+    println!("everything ended");
 }

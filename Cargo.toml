@@ -17,3 +17,4 @@ uuid = { version = "1.0", features = ["v4", "v7", "serde"] }
 anyhow = "1.0"
 thiserror = "2.0.20"
 reqwest = { version = "0.13.5", features = ["json"] }
+axum = "0.8.9"
