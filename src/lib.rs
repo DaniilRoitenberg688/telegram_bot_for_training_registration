@@ -16,7 +16,8 @@ use teloxide::dispatching::dialogue::InMemStorage;
 use teloxide::{Bot, dptree};
 use tokio;
 
-use crate::api::init::{ApiState, init_router};
+use crate::api::init::init_router;
+use crate::api::state::ApiState;
 use crate::bot::{create_every_day_training_task, handler, send_every_week_notification};
 use crate::config::Config;
 use crate::repo::cancel::CancelRepo;
@@ -62,6 +63,7 @@ pub async fn run() -> MyResult<()> {
     // create state for api
     let api_state = ApiState {
         user_service: user_service.clone(),
+        training_service: training_service.clone(),
     };
 
     // spawn api task

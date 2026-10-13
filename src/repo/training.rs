@@ -143,4 +143,16 @@ impl TrainingRepo {
         .await?;
         Ok(())
     }
+
+    pub async fn update_training(&self, training: Training) -> Result<(), sqlx::Error> {
+        // pub date: NaiveDate,
+        //    pub start_time: NaiveTime,
+        //    pub end_time: NaiveTime,
+        //    pub capacity: u32,
+        //    pub enabled: bool,
+        sqlx::query("UPDATE trainings SET ")
+            .execute(&self.db)
+            .await?;
+        Ok(())
+    }
 }

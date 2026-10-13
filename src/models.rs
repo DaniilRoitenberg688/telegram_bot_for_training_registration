@@ -13,7 +13,7 @@ pub struct User {
     pub is_trainer: bool,
 }
 
-#[derive(Debug, Clone, FromRow, Default)]
+#[derive(Debug, Clone, FromRow, Default, Serialize)]
 pub struct Training {
     pub id: Uuid,
     pub date: NaiveDate,
