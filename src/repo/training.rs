@@ -30,12 +30,10 @@ impl TrainingRepo {
     }
 
     pub async fn get_by_id(&self, id: Uuid) -> Result<Training, sqlx::Error> {
-        let training = sqlx::query_as::<_, Training>(
-            "select * from trainings where id = $1 and enabled = true",
-        )
-        .bind(id)
-        .fetch_one(&self.db)
-        .await?;
+        let training = sqlx::query_as::<_, Training>("select * from trainings where id = $1")
+            .bind(id)
+            .fetch_one(&self.db)
+            .await?;
         Ok(training)
     }
 
@@ -45,10 +43,10 @@ impl TrainingRepo {
         to: Option<chrono::NaiveDate>,
         repeats: bool,
     ) -> Result<Vec<Training>, ServiceError> {
-        let mut sql = "select * from trainings where ($1 is NULL or date >= $1) and ($2 is NULL or date <= $2) and enabled = true";
+        let mut sql = "select * from trainings where ($1 is NULL or date >= $1) and ($2 is NULL or date <= $2)";
         if !repeats {
             sql = "select id, date, start_time, end_time, capacity, enabled from trainings
-                    where ($1 is NULL or date >= $1) and ($2 is NULL or date <= $2) and enabled = true
+                    where ($1 is NULL or date >= $1) and ($2 is NULL or date <= $2)
                     group by date";
         }
         let trainings = sqlx::query_as::<_, Training>(sql)
@@ -60,12 +58,10 @@ impl TrainingRepo {
     }
 
     pub async fn get_by_date(&self, date: NaiveDate) -> Result<Vec<Training>, sqlx::Error> {
-        let training = sqlx::query_as::<_, Training>(
-            "select * from trainings where date = $1 and enabled = true",
-        )
-        .bind(date)
-        .fetch_all(&self.db)
-        .await?;
+        let training = sqlx::query_as::<_, Training>("select * from trainings where date = $1")
+            .bind(date)
+            .fetch_all(&self.db)
+            .await?;
         Ok(training)
     }
 
@@ -150,7 +146,12 @@ impl TrainingRepo {
         //    pub end_time: NaiveTime,
         //    pub capacity: u32,
         //    pub enabled: bool,
-        sqlx::query("UPDATE trainings SET ")
+        sqlx::query("UPDATE trainings SET date = $1, start_time = $2, end_time = $3, enabled= $4 WHERE id = $5")
+            .bind(training.date)
+            .bind(training.start_time)
+            .bind(training.end_time)
+            .bind(training.enabled)
+            .bind(training.id)
             .execute(&self.db)
             .await?;
         Ok(())

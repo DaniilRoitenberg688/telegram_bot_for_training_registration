@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::models::Registration;
 
 pub struct RegistrationRepo {
-    db: SqlitePool
+    db: SqlitePool,
 }
 
 impl RegistrationRepo {
@@ -22,13 +22,20 @@ impl RegistrationRepo {
         Ok(())
     }
 
+    pub async fn get_by_training_id(&self, training_id: Uuid) -> Result<Registration, sqlx::Error> {
+        sqlx::query_as("select * from registrations where training_id = $1")
+            .bind(training_id)
+            .fetch_one(&self.db)
+            .await
+            .map_err(|e| e.into())
+    }
+
     pub async fn delete(&self, user_id: String, training_id: Uuid) -> Result<(), sqlx::Error> {
         sqlx::query("delete from registrations where user_id = $1 and training_id = $2")
             .bind(user_id)
             .bind(training_id)
-            .execute(&self.db).await?;
+            .execute(&self.db)
+            .await?;
         Ok(())
-
     }
-
 }

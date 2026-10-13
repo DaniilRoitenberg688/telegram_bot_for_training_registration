@@ -10,6 +10,7 @@ use teloxide::{
 };
 use uuid::Uuid;
 
+use crate::handlers::base::report_error;
 use crate::handlers::{GetCallbackData, GetMessage};
 use crate::keyboards::*;
 use crate::{
@@ -42,9 +43,23 @@ pub async fn handle_user_text(
             }
             USER_GET_TRAININGS_REPLY_KEYBOARD_TEXT if !trainer_ids.contains(&user_id) => {
                 println!("{}", msg.chat.id);
-                let user_trainings = training_serivce
+                let user_trainings = match training_serivce
                     .get_registered_trainings_for_user(msg.chat.id.to_string())
-                    .await;
+                    .await
+                {
+                    Ok(trainings) => trainings,
+                    Err(e) => {
+                        return report_error(
+                            &bot,
+                            msg.chat.id,
+                            msg.id,
+                            &dialogue,
+                            "cannot get registered trainings for user",
+                            e,
+                        )
+                        .await;
+                    }
+                };
                 println!("{:?}", user_trainings);
                 if user_trainings.is_empty() {
                     bot.send_message(msg.chat.id, "У вас пока нет записей")
@@ -73,7 +88,20 @@ pub async fn handle_user_text(
                 dialogue.update(State::AdminChooseWeek).await?;
                 bot.send_message(msg.chat.id, "Выберите неделю:")
                     .reply_markup(generate_week_inline_keyboard(
-                        training_serivce.get_weeks_with_trainings(get_weeks()).await,
+                        match training_serivce.get_weeks_with_trainings(get_weeks()).await {
+                            Ok(weeks) => weeks,
+                            Err(e) => {
+                                return report_error(
+                                    &bot,
+                                    msg.chat.id,
+                                    msg.id,
+                                    &dialogue,
+                                    "cannot get weeks with trainings",
+                                    e,
+                                )
+                                .await;
+                            }
+                        },
                     ))
                     .await?;
             }
@@ -105,9 +133,23 @@ pub async fn callback_handler_choose_week(
     let d = q.get_callback_data(m, &bot, &dialogue).await?;
     let start_week = NaiveDate::from_str(d)?;
     let end_week = start_week + Duration::days(6);
-    let trainings = training_serivce
-        .get_week_traings(start_week, end_week)
-        .await;
+    let trainings = match training_serivce
+        .get_week_traings(start_week, end_week, true)
+        .await
+    {
+        Ok(trainings) => trainings,
+        Err(e) => {
+            return report_error(
+                &bot,
+                m.chat().id,
+                m.id(),
+                &dialogue,
+                "cannot get week trainings",
+                e,
+            )
+            .await;
+        }
+    };
     bot.edit_message_text(m.chat().id, m.id(), "Выберите дату:")
         .await?;
     bot.edit_message_reply_markup(m.chat().id, m.id())
@@ -128,7 +170,20 @@ pub async fn callback_handler_choose_day(
     let d = q.get_callback_data(m, &bot, &dialogue).await?;
     let day_string = d.rsplit("/").next().unwrap_or("");
     let day = NaiveDate::from_str(day_string)?;
-    let trainings = training_serivce.get_training_by_date(day).await;
+    let trainings = match training_serivce.get_training_by_date(day).await {
+        Ok(trainings) => trainings,
+        Err(e) => {
+            return report_error(
+                &bot,
+                m.chat().id,
+                m.id(),
+                &dialogue,
+                "cannot get training by date",
+                e,
+            )
+            .await;
+        }
+    };
     bot.edit_message_text(m.chat().id, m.id(), "Выберите время:")
         .await?;
     bot.edit_message_reply_markup(m.chat().id, m.id())
@@ -150,7 +205,7 @@ pub async fn callback_handler_choose_time(
     let id = Uuid::from_str(id_string)?;
     let training = training_serivce.get(id).await;
     match training {
-        Some(t) => {
+        Ok(t) => {
             bot.edit_message_text(
                 m.chat().id,
                 m.id(),
@@ -169,7 +224,7 @@ pub async fn callback_handler_choose_time(
                 .update(State::ConfirmRegistration { training: t })
                 .await?;
         }
-        None => {
+        Err(_) => {
             bot.edit_message_text(m.chat().id, m.id(), "Извините, что-то пошло не так")
                 .await?;
         }
@@ -206,9 +261,23 @@ pub async fn callback_handler_choose_training_to_cancel(
     training_serivce: Arc<TrainingService>,
 ) -> MyResult<()> {
     let m = q.get_message()?;
-    let user_trainings = training_serivce
+    let user_trainings = match training_serivce
         .get_registered_trainings_for_user(m.chat().id.to_string())
-        .await;
+        .await
+    {
+        Ok(user_trainings) => user_trainings,
+        Err(e) => {
+            return report_error(
+                &bot,
+                m.chat().id,
+                m.id(),
+                &dialogue,
+                "cannot get registered trainings for user",
+                e,
+            )
+            .await;
+        }
+    };
     bot.edit_message_text(
         m.chat().id,
         m.id(),
@@ -232,7 +301,7 @@ pub async fn callback_confirm_cancel_training(
     let d = q.get_callback_data(msg, &bot, &dialogue).await?;
     let id = Uuid::from_str(d).unwrap();
     match training_service.get(id).await {
-        Some(training) => {
+        Ok(training) => {
             bot.edit_message_text(
                 msg.chat().id,
                 msg.id(),
@@ -254,7 +323,7 @@ pub async fn callback_confirm_cancel_training(
                 .update(State::ConfirmCancelTraining { training })
                 .await?;
         }
-        None => {
+        Err(_) => {
             bot.edit_message_text(msg.chat().id, msg.id(), "Не могу найти такую тренировку")
                 .await?;
             dialogue.update(State::Default).await?;

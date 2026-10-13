@@ -5,6 +5,8 @@ use thiserror::Error;
 pub enum ServiceError {
     #[error("failed to find object in database")]
     NotFound,
+    #[error("cannot do this operation")]
+    Forbidden,
     #[error("failed to execute SQL query: {0}")]
     Sql(#[from] sqlx::Error),
     #[error("reqwest sending error: {0}")]

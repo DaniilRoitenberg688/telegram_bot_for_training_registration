@@ -9,8 +9,13 @@ impl UserService {
         UserService { repo }
     }
 
-    pub async fn get(&self, id: String) -> Option<User> {
-        self.repo.get_by_id(id).await.ok()
+    pub async fn get(&self, id: String) -> Result<User, ServiceError> {
+        let user = match self.repo.get_by_id(id).await {
+            Ok(user) => user,
+            Err(sqlx::Error::RowNotFound) => return Err(ServiceError::NotFound),
+            Err(e) => return Err(e.into()),
+        };
+        Ok(user)
     }
 
     pub async fn register(&self, user: User) -> Result<(), ServiceError> {

@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use crate::handlers::GetCallbackData;
 use crate::handlers::GetMessage;
+use crate::handlers::base::report_error;
 use crate::keyboards::*;
 use crate::models::CancelResponse;
 use chrono::{Duration, NaiveDate};
@@ -27,16 +28,29 @@ pub async fn callback_handler_admin_choose_day(
     let start_week_string = d.rsplit("/").next().unwrap_or("");
     let start_week = NaiveDate::from_str(start_week_string)?;
     let end_week = start_week + Duration::days(6);
-    let trainings = training_serivce
+    let trainings = match training_serivce
         .get_trainings_for_trainer_betweeen_dates(start_week, end_week)
-        .await;
+        .await
+    {
+        Ok(trainings) => trainings,
+        Err(e) => {
+            return report_error(
+                &bot,
+                m.chat().id,
+                m.id(),
+                &dialogue,
+                "cannot get trainings for trainer between dates",
+                e,
+            )
+            .await;
+        }
+    };
     bot.edit_message_text(m.chat().id, m.id(), "Выберите дату:")
         .await?;
     bot.edit_message_reply_markup(m.chat().id, m.id())
         .reply_markup(generate_days_inline_keyboard(trainings, d.to_string()))
         .await?;
     dialogue.update(State::AdminChooseDay).await?;
-
     Ok(())
 }
 
@@ -50,9 +64,23 @@ pub async fn callback_show_time_admin(
     let d = q.get_callback_data(m, &bot, &dialogue).await?;
     let day_string = d.rsplit("/").next().unwrap_or("");
     let day = NaiveDate::from_str(day_string)?;
-    let trainings = training_serivce
+    let trainings = match training_serivce
         .get_trainings_by_date_with_registration(day)
-        .await;
+        .await
+    {
+        Ok(trainings) => trainings,
+        Err(e) => {
+            return report_error(
+                &bot,
+                m.chat().id,
+                m.id(),
+                &dialogue,
+                "cannot get trainings by date with registration",
+                e,
+            )
+            .await;
+        }
+    };
     let mut my_message = format!("<b> Записи на {}:</b>\n\n", day.format("%d.%m"));
     for t in trainings {
         let l = format!(

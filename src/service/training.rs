@@ -3,6 +3,7 @@ use chrono_tz::Europe::Moscow;
 use uuid::Uuid;
 
 use crate::{
+    api::schemes::UpdateTrainingIn,
     models::{CancelResponse, Registration, RegistrationFullInfo, Training},
     repo::{cancel::CancelRepo, registration::RegistrationRepo, training::TrainingRepo},
     service::errors::ServiceError,
@@ -27,14 +28,13 @@ impl TrainingService {
         }
     }
 
-    pub async fn get(&self, id: Uuid) -> Option<Training> {
-        match self.repo.get_by_id(id).await {
-            Ok(t) => Some(t),
-            Err(err) => {
-                eprintln!("{}", err);
-                None
-            }
-        }
+    pub async fn get(&self, id: Uuid) -> Result<Training, ServiceError> {
+        let training = match self.repo.get_by_id(id).await {
+            Ok(t) => t,
+            Err(sqlx::Error::RowNotFound) => return Err(ServiceError::NotFound),
+            Err(e) => return Err(e.into()),
+        };
+        Ok(training)
     }
 
     pub async fn every_day_create(&self) -> Result<(), ServiceError> {
@@ -70,34 +70,31 @@ impl TrainingService {
         Ok(())
     }
 
-    pub async fn get_week_traings(&self, from: NaiveDate, to: NaiveDate) -> Vec<Training> {
+    pub async fn get_week_traings(
+        &self,
+        from: NaiveDate,
+        to: NaiveDate,
+        enabled: bool,
+    ) -> Result<Vec<Training>, ServiceError> {
         let mut trainings = self
             .repo
             .get_between_dates(Some(from), Some(to), false)
-            .await
-            .unwrap_or_else(|e| {
-                eprintln!("cannot get trainings for user between dates: {e}");
-                Vec::new()
-            });
+            .await?;
         let now = Utc::now().with_timezone(&Moscow);
-        trainings.retain(|t| t.date >= now.date_naive());
-        trainings
+        trainings.retain(|t| t.date >= now.date_naive() && t.enabled == enabled);
+        Ok(trainings)
     }
 
-    pub async fn get_training_by_date(&self, date: NaiveDate) -> Vec<Training> {
-        let mut trainings = self
-            .repo
-            .get_by_date_without_registration(date)
-            .await
-            .unwrap_or_else(|e| {
-                eprintln!("cannot get trainings by date: {}", e);
-                Vec::new()
-            });
+    pub async fn get_training_by_date(
+        &self,
+        date: NaiveDate,
+    ) -> Result<Vec<Training>, ServiceError> {
+        let mut trainings = self.repo.get_by_date_without_registration(date).await?;
         let now = Utc::now().with_timezone(&Moscow);
         trainings.retain(|t| {
             t.date > now.date_naive() || (t.start_time >= now.time() && t.date == now.date_naive())
         });
-        trainings
+        Ok(trainings)
     }
 
     pub async fn register_to_training(
@@ -110,6 +107,11 @@ impl TrainingService {
             Err(sqlx::Error::RowNotFound) => return Err(ServiceError::NotFound),
             Err(e) => return Err(ServiceError::Sql(e)),
         };
+        let Err(sqlx::Error::RowNotFound) =
+            self.registration_repo.get_by_training_id(training_id).await
+        else {
+            return Err(ServiceError::Forbidden);
+        };
         let registration = Registration {
             id: Uuid::new_v4(),
             user_id,
@@ -119,15 +121,11 @@ impl TrainingService {
         Ok(())
     }
 
-    pub async fn get_registered_trainings_for_user(&self, user_id: String) -> Vec<Training> {
-        let mut trainings = self
-            .repo
-            .get_registered_trainings_for_user(user_id)
-            .await
-            .unwrap_or_else(|e| {
-                eprintln!("cannot get trainings for user: {e}");
-                Vec::new()
-            });
+    pub async fn get_registered_trainings_for_user(
+        &self,
+        user_id: String,
+    ) -> Result<Vec<Training>, ServiceError> {
+        let mut trainings = self.repo.get_registered_trainings_for_user(user_id).await?;
         let now = Utc::now().with_timezone(&Moscow);
         trainings.retain(|t| {
             t.date > now.date_naive() || (t.end_time > now.time() && t.date == now.date_naive())
@@ -137,7 +135,7 @@ impl TrainingService {
                 .cmp(&b.date)
                 .then_with(|| a.start_time.cmp(&b.start_time))
         });
-        trainings
+        Ok(trainings)
     }
 
     pub async fn cancel_training(
@@ -153,33 +151,19 @@ impl TrainingService {
         &self,
         from: NaiveDate,
         to: NaiveDate,
-    ) -> Vec<Training> {
-        let mut trainings = self
-            .repo
-            .get_trainings_with_registration()
-            .await
-            .unwrap_or_else(|e| {
-                eprintln!("cannot get trainings with registrations: {e}");
-                Vec::new()
-            });
+    ) -> Result<Vec<Training>, ServiceError> {
+        let mut trainings = self.repo.get_trainings_with_registration().await?;
         let now = Utc::now().with_timezone(&Moscow);
         trainings.retain(|t| t.date >= now.date_naive() && t.date >= from && t.date <= to);
         trainings.sort_by(|a, b| a.date.cmp(&b.date));
-        trainings
+        Ok(trainings)
     }
 
     pub async fn get_weeks_with_trainings(
         &self,
         weeks: Vec<Vec<NaiveDate>>,
-    ) -> Vec<Vec<NaiveDate>> {
-        let trainings = self
-            .repo
-            .get_trainings_with_registration()
-            .await
-            .unwrap_or_else(|e| {
-                eprintln!("cannot get trainings with registrations: {e}");
-                Vec::new()
-            });
+    ) -> Result<Vec<Vec<NaiveDate>>, ServiceError> {
+        let trainings = self.repo.get_trainings_with_registration().await?;
         let mut needed_weeks = vec![];
         for week in weeks {
             let trainings_in_week: Vec<_> = trainings
@@ -190,23 +174,19 @@ impl TrainingService {
                 needed_weeks.push(week);
             }
         }
-        needed_weeks
+        Ok(needed_weeks)
     }
 
     pub async fn get_trainings_by_date_with_registration(
         &self,
         date: NaiveDate,
-    ) -> Vec<RegistrationFullInfo> {
+    ) -> Result<Vec<RegistrationFullInfo>, ServiceError> {
         let mut trainings = self
             .repo
             .get_trainings_with_registration_by_date(date)
-            .await
-            .unwrap_or_else(|e| {
-                eprintln!("cannot get trainings with registration by date: {e}");
-                Vec::new()
-            });
+            .await?;
         trainings.sort_by(|a, b| a.start_time.cmp(&b.start_time));
-        trainings
+        Ok(trainings)
     }
 
     pub async fn create_cancel_response(
@@ -226,6 +206,26 @@ impl TrainingService {
         cancel_response: CancelResponse,
     ) -> Result<(), ServiceError> {
         self.repo.cancel_training(cancel_response).await?;
+        Ok(())
+    }
+
+    pub async fn update_training(
+        &self,
+        id: Uuid,
+        training_data: UpdateTrainingIn,
+    ) -> Result<(), ServiceError> {
+        let mut training = match self.repo.get_by_id(id).await {
+            Ok(training) => training,
+            Err(sqlx::Error::RowNotFound) => {
+                return Err(ServiceError::NotFound);
+            }
+            Err(e) => {
+                eprintln!("cannot get training by id: {e}");
+                return Err(ServiceError::Sql(e));
+            }
+        };
+        training.enabled = training_data.enabled;
+        let _ = self.repo.update_training(training).await?;
         Ok(())
     }
 }

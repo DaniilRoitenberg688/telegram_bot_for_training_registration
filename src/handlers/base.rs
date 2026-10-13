@@ -1,10 +1,10 @@
 use crate::commands::Command;
-use crate::handlers::{GetCallbackData, GetMessage};
 use crate::handlers::admin::callback_handler_admin_choose_day;
 use crate::handlers::user::{
     callback_handler_choose_day, callback_handler_choose_training_to_cancel,
     callback_handler_choose_week,
 };
+use crate::handlers::{GetCallbackData, GetMessage};
 use crate::keyboards::{
     generate_week_inline_keyboard, get_weeks, trainer_reply_keyboard, user_reply_keyboard,
 };
@@ -17,6 +17,22 @@ use crate::types::{MyDialogue, MyResult};
 use std::str::FromStr;
 use std::sync::Arc;
 use teloxide::prelude::*;
+use teloxide::types::MessageId;
+
+pub async fn report_error(
+    bot: &Bot,
+    chat_id: ChatId,
+    message_id: MessageId,
+    dialogue: &MyDialogue,
+    context: &str,
+    e: impl std::fmt::Display,
+) -> MyResult<()> {
+    eprintln!("{context}: {e}");
+    bot.edit_message_text(chat_id, message_id, "Что-то пошло не так")
+        .await?;
+    dialogue.update(State::Default).await?;
+    Ok(())
+}
 
 pub async fn handle_commands(
     bot: Bot,
@@ -28,7 +44,7 @@ pub async fn handle_commands(
 ) -> MyResult<()> {
     match cmd {
         Command::Start => match user_service.get(msg.chat.id.to_string()).await {
-            Some(user) => {
+            Ok(user) => {
                 dialogue.update(State::Default).await?;
                 if user.is_trainer {
                     bot.send_message(msg.chat.id, "Здравствуйте, босс! Чем могу помочь?")
@@ -43,7 +59,7 @@ pub async fn handle_commands(
                     .await?;
                 }
             }
-            None => {
+            Err(_) => {
                 if trainer_ids.contains(&msg.chat.id.to_string()) {
                     let user = User {
                         id: msg.chat.id.to_string(),
@@ -157,7 +173,20 @@ pub async fn callback_handler_back(
                         .await?;
                     bot.edit_message_reply_markup(msg.chat().id, msg.id())
                         .reply_markup(generate_week_inline_keyboard(
-                            training_serivce.get_weeks_with_trainings(get_weeks()).await,
+                            match training_serivce.get_weeks_with_trainings(get_weeks()).await {
+                                Ok(weeks) => weeks,
+                                Err(e) => {
+                                    return report_error(
+                                        &bot,
+                                        msg.chat().id,
+                                        msg.id(),
+                                        &dialogue,
+                                        "cannot get weeks with trainings",
+                                        e,
+                                    )
+                                    .await;
+                                }
+                            },
                         ))
                         .await?;
                 } else {
@@ -170,8 +199,7 @@ pub async fn callback_handler_back(
                 }
             }
             State::ChooseWeek => {
-                callback_handler_choose_week(bot, new_query, dialogue, training_serivce)
-                    .await?;
+                callback_handler_choose_week(bot, new_query, dialogue, training_serivce).await?;
             }
             State::ChooseDay => {
                 callback_handler_choose_day(bot, new_query, dialogue, training_serivce).await?;
