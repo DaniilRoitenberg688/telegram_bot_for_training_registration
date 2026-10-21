@@ -23,3 +23,8 @@ pub struct RegisterUserIn {
     pub user_id: String,
     pub training_id: Uuid,
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct GetFullTrainingInfoIn{
+    pub date: NaiveDate
+}

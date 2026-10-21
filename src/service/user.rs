@@ -18,6 +18,14 @@ impl UserService {
         Ok(user)
     }
 
+    // pub async fn check_if_is_trainer(&self, id: String) -> bool {
+    //     let user = self.get(id).await;
+    //     if let Ok(u) = user {
+    //         return u.is_trainer;
+    //     }
+    //     false
+    // }
+
     pub async fn register(&self, user: User) -> Result<(), ServiceError> {
         match self.repo.get_by_id(user.id.clone()).await {
             Ok(_) => Err(ServiceError::NotFound),

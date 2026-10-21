@@ -1,14 +1,13 @@
 use std::sync::Arc;
 
 use axum::{
-    Json,
-    extract::{Path, State},
+    Json, extract::{Path, State},
 };
+use chrono::NaiveDate;
 use reqwest::StatusCode;
 
 use crate::{
-    api::{errors::ApiError, schemes::RegisterUserIn, state::ApiState},
-    models::{Training, User},
+    api::{errors::ApiError, schemes::{GetDaysSchemeIn, GetFullTrainingInfoIn, RegisterUserIn}, state::ApiState}, models::{RegistrationFullInfo, Training, User},
 };
 
 pub async fn get_user(
@@ -53,3 +52,32 @@ pub async fn delete_user_to_training(
         .await?;
     Ok(StatusCode::NO_CONTENT)
 }
+
+pub async fn get_weeks_for_trainer(
+    State(state): State<Arc<ApiState>>,
+    Json(body): Json<Vec<Vec<NaiveDate>>>
+    ) -> Result<(StatusCode, Json<Vec<Vec<NaiveDate>>>), ApiError> {
+    let weeks = state.training_service.get_weeks_with_trainings(body).await?;
+    Ok((StatusCode::OK, Json(weeks)))
+}
+
+
+pub async fn get_trainigs_for_trainner_between_dates(
+    State(state): State<Arc<ApiState>>,
+    Json(body): Json<GetDaysSchemeIn>
+    ) -> Result<(StatusCode, Json<Vec<Training>>), ApiError> {
+    let days = state.training_service.get_trainings_for_trainer_betweeen_dates(body.from, body.to).await?;
+    Ok((StatusCode::OK, Json(days)))
+}
+
+pub async fn get_fullinfo_about_trainigs_for_trainer(
+    State(state): State<Arc<ApiState>>,
+    Json(body): Json<GetFullTrainingInfoIn>
+    ) -> Result<(StatusCode, Json<Vec<RegistrationFullInfo>>), ApiError> {
+    let days = state.training_service.get_trainings_by_date_with_registration(body.date).await?;
+    Ok((StatusCode::OK, Json(days)))
+}
+
+
+
+

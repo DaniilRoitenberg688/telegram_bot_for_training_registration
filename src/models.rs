@@ -36,7 +36,7 @@ pub struct Notification {
     pub date: NaiveDate,
 }
 
-#[derive(Debug, Clone, FromRow)]
+#[derive(Debug, Clone, FromRow, Deserialize, Serialize)]
 pub struct RegistrationFullInfo {
     pub date: NaiveDate,
     pub start_time: NaiveTime,
