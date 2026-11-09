@@ -12,6 +12,7 @@ pub enum ApiError {
     NotFound,
     Internal(String),
     Forbidden,
+    Unauthorized,
 }
 
 impl From<ServiceError> for ApiError {
@@ -33,6 +34,7 @@ impl IntoResponse for ApiError {
                 "unable finding this item".to_string(),
             ),
             ApiError::Forbidden => (StatusCode::FORBIDDEN, "not allowed doing this".to_string()),
+            ApiError::Unauthorized => (StatusCode::UNAUTHORIZED, "invalid telegram init data".to_string()),
             ApiError::Internal(e) => {
                 tracing::error!(error = ?e, "internal error");
                 (

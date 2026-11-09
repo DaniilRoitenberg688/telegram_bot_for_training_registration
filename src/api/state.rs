@@ -6,4 +6,5 @@ use crate::service::{training::TrainingService, user::UserService};
 pub struct ApiState {
     pub user_service: Arc<UserService>,
     pub training_service: Arc<TrainingService>,
+    pub bot_token: String,
 }

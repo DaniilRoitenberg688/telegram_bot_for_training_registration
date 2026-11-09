@@ -1,0 +1,255 @@
+/* Цвета берутся из темы Telegram: telegram-web-app.js сам выставляет --tg-theme-* переменные.
+   Значения после запятой — запасные, для открытия в обычном браузере. */
+:root {
+  --bg: var(--tg-theme-bg-color, #ffffff);
+  --bg-secondary: var(--tg-theme-secondary-bg-color, #f1f1f4);
+  --section-bg: var(--tg-theme-section-bg-color, var(--bg));
+  --text: var(--tg-theme-text-color, #000000);
+  --hint: var(--tg-theme-hint-color, #8e8e93);
+  --link: var(--tg-theme-link-color, #2481cc);
+  --accent: var(--tg-theme-button-color, #2481cc);
+  --accent-text: var(--tg-theme-button-text-color, #ffffff);
+  --danger: var(--tg-theme-destructive-text-color, #e53935);
+  --section-header: var(--tg-theme-section-header-text-color, var(--hint));
+  --radius: 12px;
+
+  color-scheme: light dark;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-secondary);
+  color: var(--text);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+.screen {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 16px 16px calc(24px + env(safe-area-inset-bottom));
+}
+
+.screen-header {
+  margin: 8px 4px 20px;
+}
+
+.screen-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.hint {
+  color: var(--hint);
+  font-size: 14px;
+}
+
+.section {
+  margin-bottom: 20px;
+}
+
+.section-title {
+  margin: 0 4px 8px;
+  font-size: 13px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--section-header);
+}
+
+/* Списки */
+.list {
+  display: flex;
+  flex-direction: column;
+  background: var(--section-bg);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  text-align: left;
+}
+
+.list-item + .list-item {
+  border-top: 0.5px solid color-mix(in srgb, var(--hint) 30%, transparent);
+}
+
+button.list-item:active {
+  background: color-mix(in srgb, var(--hint) 15%, transparent);
+}
+
+.list-item-icon {
+  font-size: 24px;
+}
+
+.list-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.list-item-title {
+  font-weight: 500;
+}
+
+.chevron {
+  color: var(--hint);
+  font-size: 22px;
+}
+
+.time-badge {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+/* Чипы выбора недели/дня */
+.chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 4px;
+  scrollbar-width: none;
+}
+
+.chips::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: var(--section-bg);
+  white-space: nowrap;
+  font-size: 15px;
+  transition: background 0.15s;
+}
+
+.chip-active {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.chip-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.2;
+}
+
+.chip-day-weekday {
+  font-size: 12px;
+  opacity: 0.75;
+  text-transform: uppercase;
+}
+
+/* Слоты времени */
+.slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+}
+
+.slot {
+  padding: 14px 0;
+  border-radius: var(--radius);
+  background: var(--section-bg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition: transform 0.1s;
+}
+
+.slot:not(:disabled):active {
+  transform: scale(0.96);
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+/* Кнопки */
+.button {
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.button-secondary {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+}
+
+.button-danger {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+
+.button-small {
+  padding: 6px 12px;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* Состояния */
+.center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.message {
+  line-height: 1.4;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid color-mix(in srgb, var(--hint) 30%, transparent);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

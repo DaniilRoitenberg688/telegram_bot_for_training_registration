@@ -45,6 +45,7 @@ pub async fn run() -> MyResult<()> {
         cancel_repo,
     ));
     let notification_repo = NotificationRepo::new(pool.clone());
+    let bot_token = config.token.clone();
     let bot = Bot::new(config.token);
     let trainer_ids = Arc::new(config.trainer_ids);
     //FINISH INIT
@@ -67,6 +68,7 @@ pub async fn run() -> MyResult<()> {
     let api_state = ApiState {
         user_service: user_service.clone(),
         training_service: training_service.clone(),
+        bot_token,
     };
 
     // spawn api task

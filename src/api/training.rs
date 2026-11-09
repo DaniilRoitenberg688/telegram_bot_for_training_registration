@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 use crate::{
     api::{
+        auth::TgUser,
         errors::ApiError,
         schemes::{GetDaysSchemeIn, GetTrainingsByDateIn, UpdateTrainingIn},
         state::ApiState,
@@ -18,6 +19,7 @@ use crate::{
 
 pub async fn get_trainigs_between_days(
     State(state): State<Arc<ApiState>>,
+    _user: TgUser,
     Query(body): Query<GetDaysSchemeIn>,
 ) -> Result<(StatusCode, Json<Vec<Training>>), ApiError> {
     let trainings = state
@@ -29,6 +31,7 @@ pub async fn get_trainigs_between_days(
 
 pub async fn get_trainings_by_date(
     State(state): State<Arc<ApiState>>,
+    _user: TgUser,
     Query(q): Query<GetTrainingsByDateIn>,
 ) -> Result<(StatusCode, Json<Vec<Training>>), ApiError> {
     let trainings = state.training_service.get_training_by_date(q.date).await?;
@@ -37,6 +40,7 @@ pub async fn get_trainings_by_date(
 
 pub async fn get_training_by_id(
     State(state): State<Arc<ApiState>>,
+    _user: TgUser,
     Path(id): Path<Uuid>,
 ) -> Result<(StatusCode, Json<Training>), ApiError> {
     let training = state.training_service.get(id).await?;
@@ -46,8 +50,10 @@ pub async fn get_training_by_id(
 pub async fn update_training(
     State(state): State<Arc<ApiState>>,
     Path(id): Path<Uuid>,
+    user: TgUser,
     Json(body): Json<UpdateTrainingIn>,
 ) -> Result<StatusCode, ApiError> {
+    user.ensure_trainer(&state).await?;
     state.training_service.update_training(id, body).await?;
     Ok(StatusCode::OK)
 }

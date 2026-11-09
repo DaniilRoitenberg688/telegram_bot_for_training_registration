@@ -1,0 +1,22 @@
+# DOMAIN — домен Mini App (например, trainer.example.com). Caddy сам получит и будет
+# продлевать сертификат Let's Encrypt. Если DOMAIN не задан — работает по http на :80
+# (например, если HTTPS уже делает другой прокси перед этим контейнером).
+{$DOMAIN} {
+	encode zstd gzip
+
+	# REST API бота
+	handle /api/* {
+		reverse_proxy {$API_UPSTREAM}
+	}
+
+	handle {
+		root * /srv
+		# Ассеты с хэшем в имени кэшируем навсегда, index.html — никогда,
+		# чтобы Telegram сразу подхватывал новую версию.
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		header / Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}

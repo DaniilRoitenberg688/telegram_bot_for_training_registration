@@ -3,8 +3,32 @@ services:
     build: .
     restart: unless-stopped
     env_file: .env          # TELOXIDE_TOKEN=...
+    environment:
+      # Dev-режим без проверки initData на сервере запрещён, даже если он включён в .env
+      API_AUTH_DISABLED: "false"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./data:/app/data
       - ./promts:/app/promts
+
+  # Telegram Mini App: Caddy с HTTPS, раздаёт фронт и проксирует /api на бота
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:-:80}            # домен из .env; без него — http на 80 порту
+      API_UPSTREAM: bot:${PORT:-8080}   # PORT бота из .env
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data                # сертификаты Let's Encrypt
+      - caddy_config:/config
+    depends_on:
+      - bot
+
+volumes:
+  caddy_data:
+  caddy_config:
