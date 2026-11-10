@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::{
     api::schemes::UpdateTrainingIn,
-    models::{CancelResponse, Registration, RegistrationFullInfo, Training},
+    models::{CancelResponse, Registration, RegistrationFullInfo, Training, TrainerSlot},
     repo::{cancel::CancelRepo, registration::RegistrationRepo, training::TrainingRepo},
     service::errors::ServiceError,
 };
@@ -187,6 +187,13 @@ impl TrainingService {
             .await?;
         trainings.sort_by(|a, b| a.start_time.cmp(&b.start_time));
         Ok(trainings)
+    }
+
+    pub async fn get_all_slots_by_date(
+        &self,
+        date: NaiveDate,
+    ) -> Result<Vec<TrainerSlot>, ServiceError> {
+        Ok(self.repo.get_all_slots_by_date(date).await?)
     }
 
     pub async fn create_cancel_response(

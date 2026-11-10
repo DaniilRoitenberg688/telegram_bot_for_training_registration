@@ -10,7 +10,7 @@ use tracing_subscriber::{EnvFilter};
 use crate::api::{
     state::ApiState, training::{
         get_trainigs_between_days, get_training_by_id, get_trainings_by_date, update_training,
-    }, user::{delete_user_to_training, get_fullinfo_about_trainigs_for_trainer, get_trainigs_for_trainner_between_dates, get_user, get_user_trainings, get_weeks_for_trainer, register_user_to_training},
+    }, user::{delete_user_to_training, get_fullinfo_about_trainigs_for_trainer, get_trainer_slots, get_trainigs_for_trainner_between_dates, get_user, get_user_trainings, get_weeks_for_trainer, register_user_to_training},
 };
 
 pub fn init_router(state: ApiState) -> Router {
@@ -31,6 +31,7 @@ pub fn init_router(state: ApiState) -> Router {
         .route("/trainer/weeks", get(get_weeks_for_trainer))
         .route("/trainer/days", get(get_trainigs_for_trainner_between_dates))
         .route("/trainer/trainings", get(get_fullinfo_about_trainigs_for_trainer))
+        .route("/trainer/slots", get(get_trainer_slots))
         .layer(TraceLayer::new_for_http())
         .with_state(Arc::new(state));
     Router::new().nest("/api", app)

@@ -45,6 +45,19 @@ pub struct RegistrationFullInfo {
     pub username: String,
 }
 
+/// Слот расписания для тренера: в том числе выключенные и занятые, с данными записавшегося.
+#[derive(Debug, Clone, FromRow, Serialize)]
+pub struct TrainerSlot {
+    pub id: Uuid,
+    pub date: NaiveDate,
+    pub start_time: NaiveTime,
+    pub end_time: NaiveTime,
+    pub enabled: bool,
+    pub user_id: Option<String>,
+    pub full_name: Option<String>,
+    pub username: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct CancelTrainingAiRequest {
     pub model: String,

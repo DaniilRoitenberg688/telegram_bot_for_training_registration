@@ -16,6 +16,7 @@ const clientMenu: MenuItem[] = [
 
 const trainerMenu: MenuItem[] = [
   { icon: "📅", title: "Записи клиентов", description: "Кто и когда записан", route: { name: "trainer" } },
+  { icon: "🗓", title: "Моё расписание", description: "Включить или отключить тренировки", route: { name: "schedule" } },
 ];
 
 export function Home({ user }: { user: User }) {

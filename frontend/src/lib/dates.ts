@@ -68,3 +68,20 @@ export const formatTime = (time: IsoTime) => time.slice(0, 5);
 export const formatWeek = (w: Week) => `${formatShortDate(w.from)} — ${formatShortDate(w.to)}`;
 
 export const isInWeek = (iso: IsoDate, w: Week) => iso >= w.from && iso <= w.to;
+
+/** Текущее время по Москве в формате HH:MM:SS — для сравнения со start_time слотов. */
+export function nowTimeIso(): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date());
+}
+
+/** Все дни недели, начиная с сегодняшнего (прошедшие отбрасываются). */
+export function weekDaysFromToday(w: Week): IsoDate[] {
+  const today = todayIso();
+  return Array.from({ length: 7 }, (_, i) => addDays(w.from, i)).filter((d) => d >= today);
+}

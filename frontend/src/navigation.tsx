@@ -9,10 +9,12 @@ export type Route =
   | { name: "book" }
   | { name: "my" }
   | { name: "trainer" }
-  | { name: "trainerDay"; date: IsoDate };
+  | { name: "trainerDay"; date: IsoDate }
+  | { name: "schedule" };
 
 interface Navigation {
   route: Route;
+  canGoBack: boolean;
   push(route: Route): void;
   back(): void;
 }
@@ -36,8 +38,16 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     window.scrollTo(0, 0);
   }, [stack.length]);
 
-  const value = useMemo(() => ({ route: stack[stack.length - 1], push, back }), [stack, push, back]);
+  const value = useMemo(
+    () => ({ route: stack[stack.length - 1], canGoBack, push, back }),
+    [stack, canGoBack, push, back],
+  );
   return <NavigationContext.Provider value={value}>{children}</NavigationContext.Provider>;
+}
+
+/** То же, что useNavigation, но вне NavigationProvider возвращает null (для общих компонентов). */
+export function useOptionalNavigation(): Navigation | null {
+  return useContext(NavigationContext);
 }
 
 export function useNavigation(): Navigation {

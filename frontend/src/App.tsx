@@ -6,6 +6,7 @@ import { NavigationProvider, useNavigation } from "./navigation";
 import { Book } from "./screens/Book";
 import { Home } from "./screens/Home";
 import { MyBookings } from "./screens/MyBookings";
+import { Schedule } from "./screens/Schedule";
 import { TrainerDay } from "./screens/TrainerDay";
 import { TrainerSchedule } from "./screens/TrainerSchedule";
 import { closeApp, getUserId, insideTelegram } from "./telegram";
@@ -56,6 +57,8 @@ function Router({ user }: { user: User }) {
       return <TrainerSchedule />;
     case "trainerDay":
       return <TrainerDay date={route.date} />;
+    case "schedule":
+      return <Schedule />;
   }
 }
 

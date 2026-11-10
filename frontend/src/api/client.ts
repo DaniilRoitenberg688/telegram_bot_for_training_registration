@@ -1,5 +1,5 @@
 import { getInitData } from "../telegram";
-import type { IsoDate, RegistrationFullInfo, Training, User } from "./types";
+import type { IsoDate, RegistrationFullInfo, TrainerSlot, Training, User } from "./types";
 
 const BASE_URL = (import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "");
 
@@ -36,8 +36,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const body = await res.json().catch(() => null);
     throw new ApiError(res.status, body?.error ?? `HTTP ${res.status}`);
   }
-  if (res.status === 204 || res.status === 201) return undefined as T;
-  return res.json() as Promise<T>;
+  // Часть эндпоинтов (201, 204, PUT /training/{id} -> 200) отвечает пустым телом
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 const query = (params: Record<string, string>) => new URLSearchParams(params).toString();
@@ -70,17 +71,21 @@ export const api = {
       body: json({ user_id: userId, training_id: trainingId }),
     }),
 
-  /**
-   * GET /trainer/days — дни, в которых есть записи.
-   * ⚠️ Требует изменения на бэке: Json(body) -> Query(body), см. README.
-   */
+  /** GET /trainer/days — дни, в которых есть записи. */
   getTrainerDays: (from: IsoDate, to: IsoDate) =>
     request<Training[]>(`/trainer/days?${query({ from, to })}`),
 
-  /**
-   * GET /trainer/trainings — кто записан на конкретный день.
-   * ⚠️ Требует изменения на бэке: Json(body) -> Query(body), см. README.
-   */
+  /** GET /trainer/trainings — кто записан на конкретный день. */
   getTrainerDayRegistrations: (date: IsoDate) =>
     request<RegistrationFullInfo[]>(`/trainer/trainings?${query({ date })}`),
+
+  /** GET /trainer/slots — все слоты дня (включённые, выключенные, занятые). Только тренер. */
+  getTrainerSlots: (date: IsoDate) => request<TrainerSlot[]>(`/trainer/slots?${query({ date })}`),
+
+  /** PUT /training/{id} — включить/выключить слот. Только тренер. */
+  setTrainingEnabled: (id: string, enabled: boolean) =>
+    request<void>(`/training/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: json({ enabled }),
+    }),
 };

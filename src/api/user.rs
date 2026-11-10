@@ -7,7 +7,7 @@ use chrono::NaiveDate;
 use reqwest::StatusCode;
 
 use crate::{
-    api::{auth::TgUser, errors::ApiError, schemes::{GetDaysSchemeIn, GetFullTrainingInfoIn, RegisterUserIn}, state::ApiState}, models::{RegistrationFullInfo, Training, User},
+    api::{auth::TgUser, errors::ApiError, schemes::{GetDaysSchemeIn, GetFullTrainingInfoIn, RegisterUserIn}, state::ApiState}, models::{RegistrationFullInfo, Training, TrainerSlot, User},
 };
 
 pub async fn get_user(
@@ -92,6 +92,12 @@ pub async fn get_fullinfo_about_trainigs_for_trainer(
     Ok((StatusCode::OK, Json(days)))
 }
 
-
-
-
+pub async fn get_trainer_slots(
+    State(state): State<Arc<ApiState>>,
+    user: TgUser,
+    Query(body): Query<GetFullTrainingInfoIn>,
+) -> Result<(StatusCode, Json<Vec<TrainerSlot>>), ApiError> {
+    user.ensure_trainer(&state).await?;
+    let slots = state.training_service.get_all_slots_by_date(body.date).await?;
+    Ok((StatusCode::OK, Json(slots)))
+}

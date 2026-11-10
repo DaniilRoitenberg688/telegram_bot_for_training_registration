@@ -195,6 +195,10 @@ button.list-item:active {
 
 .slot:not(:disabled):active {
   transform: scale(0.96);
+}
+
+/* Подсветка нажатия только на экране записи клиента */
+.slot:not(.schedule-slot):not(:disabled):active {
   background: var(--accent);
   color: var(--accent-text);
 }
@@ -252,4 +256,56 @@ button.list-item:active {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Стрелка «Назад» в шапке экрана (дублирует нативную кнопку Telegram) */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 8px -4px;
+  padding: 4px;
+  color: var(--link);
+  font-size: 16px;
+}
+
+/* Плитки расписания тренера: нажатие закрывает/открывает время */
+.schedule-hint {
+  margin: -4px 4px 10px;
+}
+
+.schedule-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 4px;
+  color: var(--text);
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.schedule-slot-off {
+  background: transparent;
+  border: 1px dashed color-mix(in srgb, var(--hint) 60%, transparent);
+  color: var(--hint);
+  text-decoration: line-through;
+}
+
+.schedule-slot-booked:not(.schedule-slot-off) {
+  background: color-mix(in srgb, var(--accent) 18%, var(--section-bg));
+}
+
+.schedule-slot-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 400;
+  text-decoration: none;
+}
+
+.button-block {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
 }

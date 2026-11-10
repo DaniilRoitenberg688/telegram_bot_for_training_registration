@@ -1,10 +1,17 @@
 import type { ReactNode } from "react";
 import type { AsyncState } from "../lib/useAsync";
+import { useOptionalNavigation } from "../navigation";
 
 export function Screen({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
+  const nav = useOptionalNavigation();
   return (
     <main className="screen">
       <header className="screen-header">
+        {nav?.canGoBack && (
+          <button className="back-link" onClick={nav.back}>
+            ‹ Назад
+          </button>
+        )}
         <h1>{title}</h1>
         {subtitle && <p className="hint">{subtitle}</p>}
       </header>

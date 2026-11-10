@@ -30,3 +30,15 @@ export interface RegistrationFullInfo {
   full_name: string;
   username: string;
 }
+
+/** Слот расписания для тренера (GET /trainer/slots): включая выключенные и занятые. */
+export interface TrainerSlot {
+  id: string;
+  date: IsoDate;
+  start_time: IsoTime;
+  end_time: IsoTime;
+  enabled: boolean;
+  user_id: string | null;
+  full_name: string | null;
+  username: string | null;
+}
