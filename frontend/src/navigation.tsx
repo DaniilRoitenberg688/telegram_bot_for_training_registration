@@ -26,9 +26,15 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const back = useCallback(() => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s)), []);
 
   const canGoBack = stack.length > 1;
-  useEffect(() => (canGoBack ? showBackButton(back) : undefined), [canGoBack, back]);
+  useEffect(() => {
+    if (canGoBack) return showBackButton(back);
+  }, [canGoBack, back]);
 
-  useEffect(() => window.scrollTo(0, 0), [stack.length]);
+  // Фигурные скобки обязательны: в новых браузерах scrollTo возвращает Promise,
+  // и React принял бы его за функцию очистки — приложение падает при переходе между экранами.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [stack.length]);
 
   const value = useMemo(() => ({ route: stack[stack.length - 1], push, back }), [stack, push, back]);
   return <NavigationContext.Provider value={value}>{children}</NavigationContext.Provider>;
