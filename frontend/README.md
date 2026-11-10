@@ -64,16 +64,90 @@ npm run tg -- --chat <id> # кнопка только в вашем чате с 
 
 ## Деплой на сервер
 
-Всё описано в корневом `docker-compose.yaml`:
-- `bot` — Rust-бот и API (наружу не публикуется, доступен только внутри docker-сети);
-- `web` — Caddy: сам получает HTTPS-сертификат Let's Encrypt, раздаёт собранный фронт
-  и проксирует `/api` на бота. Слушает 80 и 443.
+Корневой `docker-compose.yaml` поднимает два контейнера:
+- `bot` — Rust-бот и API (наружу не публикуется, доступен только внутри docker-сети проекта);
+- `web` — Caddy: раздаёт собранный фронт и проксирует `/api` на `bot`.
+  Слушает только `127.0.0.1:${WEB_PORT}`, HTTPS делает nginx на сервере.
 
-1. Направьте домен (A-запись) на IP сервера. Подойдёт и бесплатный поддомен (DuckDNS и т.п.).
-2. В корневой `.env` на сервере добавьте `DOMAIN=trainer.example.com`.
-3. `docker compose up -d --build`
-4. BotFather: `/mybots` → бот → Bot Settings → Menu Button → `https://trainer.example.com`
-   Это делается один раз, `npm run tg` на сервере не нужен.
+На одном сервере можно держать несколько ботов (например, тестовый и официальный) — каждый в своей
+папке со своим `.env`:
 
-Порты 80 и 443 на сервере должны быть свободны и открыты в фаерволе: 80 нужен Let's Encrypt
-для выдачи сертификата.
+```
+                     ┌─ test.95-163-12-34.sslip.io ─▶ 127.0.0.1:8082 → web → bot (тест)
+Интернет ─443─▶ nginx┤
+                     └─ 95-163-12-34.sslip.io ──────▶ 127.0.0.1:8081 → web → bot (прод)
+```
+
+### 1. `.env` каждого бота
+
+```bash
+# официальный
+COMPOSE_PROJECT_NAME=tg_trainer_prod
+WEB_PORT=8081
+
+# тестовый
+COMPOSE_PROJECT_NAME=tg_trainer_test
+WEB_PORT=8082
+```
+
+`COMPOSE_PROJECT_NAME` обязателен и должен отличаться: иначе папки с одинаковым названием Docker
+считает одним проектом, и запуск одного бота пересоздаст контейнеры другого.
+Остальное (`TOKEN`, `DATABASE_URL`, `TRAINER_IDS`...) у каждого бота своё.
+
+### 2. nginx
+
+```nginx
+server {
+    listen 80;
+    server_name 95-163-12-34.sslip.io test.95-163-12-34.sslip.io;
+    location /.well-known/acme-challenge/ { root /var/www/certbot; }
+    location / { return 301 https://$host$request_uri; }
+}
+
+server {
+    listen 443 ssl;
+    server_name 95-163-12-34.sslip.io;                 # официальный
+    ssl_certificate     /etc/letsencrypt/live/95-163-12-34.sslip.io/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/95-163-12-34.sslip.io/privkey.pem;
+    location / {
+        proxy_pass http://127.0.0.1:8081;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name test.95-163-12-34.sslip.io;            # тестовый
+    ssl_certificate     /etc/letsencrypt/live/95-163-12-34.sslip.io/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/95-163-12-34.sslip.io/privkey.pem;
+    location / {
+        proxy_pass http://127.0.0.1:8082;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Сертификат (сначала включите только блок на 80 порт, потом добавьте блоки 443):
+
+```bash
+sudo mkdir -p /var/www/certbot
+sudo certbot certonly --webroot -w /var/www/certbot \
+  -d 95-163-12-34.sslip.io -d test.95-163-12-34.sslip.io
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### 3. Запуск
+
+```bash
+cd ~/tg_trainer_prod && git pull && docker compose up -d --build
+cd ~/tg_trainer_test && git pull && docker compose up -d --build
+curl https://95-163-12-34.sslip.io/api/ping        # → Pong
+curl https://test.95-163-12-34.sslip.io/api/ping   # → Pong
+```
+
+В BotFather у каждого бота своя Menu Button: у официального `https://95-163-12-34.sslip.io`,
+у тестового `https://test.95-163-12-34.sslip.io`.
