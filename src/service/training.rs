@@ -76,12 +76,18 @@ impl TrainingService {
         to: NaiveDate,
         enabled: bool,
     ) -> Result<Vec<Training>, ServiceError> {
+        // Берём все слоты (без GROUP BY): сгруппированный запрос возвращал по одной
+        // случайной строке на день, и если она была отключена — пропадал весь день,
+        // хотя другие слоты в нём ещё открыты. Сначала фильтруем, потом оставляем
+        // по одному слоту на день.
         let mut trainings = self
             .repo
-            .get_between_dates(Some(from), Some(to), false)
+            .get_between_dates(Some(from), Some(to), true)
             .await?;
         let now = Utc::now().with_timezone(&Moscow);
         trainings.retain(|t| t.date >= now.date_naive() && t.enabled == enabled);
+        trainings.sort_by_key(|t| (t.date, t.start_time));
+        trainings.dedup_by_key(|t| t.date);
         Ok(trainings)
     }
 
@@ -234,5 +240,59 @@ impl TrainingService {
         training.enabled = training_data.enabled;
         let _ = self.repo.update_training(training).await?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::{Duration, NaiveTime, Utc};
+    use chrono_tz::Europe::Moscow;
+    use sqlx::SqlitePool;
+    use uuid::Uuid;
+
+    use super::TrainingService;
+    use crate::{
+        models::Training,
+        repo::{cancel::CancelRepo, registration::RegistrationRepo, training::TrainingRepo},
+    };
+
+    #[tokio::test]
+    async fn day_stays_visible_while_any_slot_is_enabled() {
+        let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
+        sqlx::migrate!().run(&pool).await.unwrap();
+        let service = TrainingService::new(
+            TrainingRepo::new(pool.clone()),
+            RegistrationRepo::new(pool.clone()),
+            CancelRepo { promt: String::new(), url: String::new(), key: String::new() },
+        );
+        let today = Utc::now().with_timezone(&Moscow).date_naive();
+        let partly_closed = today + Duration::days(2);
+        let fully_closed = today + Duration::days(3);
+
+        // Как в реальном расписании: слоты 7:00–22:00. В первом дне тренер закрыл всё до 19:00
+        // (включая первый слот, который раньше и решал судьбу дня), во втором — весь день.
+        for (date, open_from) in [(partly_closed, 19), (fully_closed, 24)] {
+            for hour in 7..=22 {
+                let repo = TrainingRepo::new(pool.clone());
+                repo.create(Training {
+                    id: Uuid::new_v4(),
+                    date,
+                    start_time: NaiveTime::from_hms_opt(hour, 0, 0).unwrap(),
+                    end_time: NaiveTime::from_hms_opt(hour + 1, 0, 0).unwrap(),
+                    capacity: 1,
+                    enabled: hour >= open_from,
+                })
+                .await
+                .unwrap();
+            }
+        }
+
+        let days = service
+            .get_week_traings(today, today + Duration::days(6), true)
+            .await
+            .unwrap();
+        let dates: Vec<_> = days.iter().map(|t| t.date).collect();
+        assert_eq!(dates, [partly_closed], "день с открытыми слотами виден, полностью закрытый — нет");
+        assert_eq!(days[0].start_time, NaiveTime::from_hms_opt(19, 0, 0).unwrap());
     }
 }
